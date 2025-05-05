@@ -52,18 +52,56 @@ namespace MurderCult
                 Directory.CreateDirectory(ConfigFolderPath);
             }
             
-            // Check if we need to create a default config
-            bool needDefaultConfig = Directory.GetFiles(ConfigFolderPath, "*.json").Length == 0;
-            if (needDefaultConfig)
+            // Get the plugins base directory
+            string pluginsBasePath = Paths.PluginPath;
+            
+            // List of all config files found
+            List<string> configFiles = new List<string>();
+            
+            // First check our own folder for any *MIS.json files
+            string[] localConfigFiles = Directory.GetFiles(ConfigFolderPath, "*MIS.json");
+            if (localConfigFiles.Length > 0)
             {
-                // Create and save a default config
+                // Add all found config files
+                configFiles.AddRange(localConfigFiles);
+            }
+            else
+            {
+                // Create and save a default config if no configs exist
+                string defaultConfigPath = Path.Combine(ConfigFolderPath, "DefaultMIS.json");
                 ModConfig defaultConfig = new ModConfig();
-                defaultConfig.SaveToFile(DefaultConfigFilePath);
-                Plugin.Log.LogInfo("Created default configuration file");
+                defaultConfig.SaveToFile(defaultConfigPath);
+                configFiles.Add(defaultConfigPath);
+                Plugin.Log.LogInfo("Created default configuration file: DefaultMIS.json");
             }
             
-            // Load all JSON files from the directory
-            string[] configFiles = Directory.GetFiles(ConfigFolderPath, "*.json");
+            // Now search through all directories in the plugins folder
+            try
+            {
+                // Get all directories in the plugins folder
+                string[] directories = Directory.GetDirectories(pluginsBasePath, "*", SearchOption.AllDirectories);
+                
+                foreach (string directory in directories)
+                {
+                    // Skip our own directory since we already checked it
+                    if (directory.Equals(ConfigFolderPath, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    
+                    // Look for any *MIS.json files in this directory
+                    string[] dirConfigFiles = Directory.GetFiles(directory, "*MIS.json");
+                    if (dirConfigFiles.Length > 0)
+                    {
+                        configFiles.AddRange(dirConfigFiles);
+                        Plugin.Log.LogInfo($"Found {dirConfigFiles.Length} additional config(s) in: {directory}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.LogError($"Error searching for config files: {ex.Message}");
+            }
+            
+            // Load all found config files
             foreach (string configFile in configFiles)
             {
                 try
@@ -72,7 +110,7 @@ namespace MurderCult
                     if (config != null)
                     {
                         Configs.Add(config);
-                        Plugin.Log.LogInfo($"Loaded configuration from {Path.GetFileName(configFile)} with {config.SpawnRules.Count} rules");
+                        Plugin.Log.LogInfo($"Loaded configuration from {Path.GetFileName(Path.GetDirectoryName(configFile))}/{Path.GetFileName(configFile)} with {config.SpawnRules.Count} rules");
                     }
                 }
                 catch (Exception ex)
@@ -112,12 +150,12 @@ namespace MurderCult
         {
             if (Configs.Count > 0)
             {
-                SaveConfig(Configs[0], "default.json");
+                SaveConfig(Configs[0], "MurderItemSpawner.json");
             }
             else
             {
                 ModConfig defaultConfig = new ModConfig();
-                SaveConfig(defaultConfig, "default.json");
+                SaveConfig(defaultConfig, "MurderItemSpawner.json");
             }
         }
 
@@ -147,30 +185,12 @@ namespace MurderCult
                         }
                         
                         // Schedule the spawn with the specified delay
-                        ScheduleSpawn(rule, config.DefaultSpawnDelay);
+                        SpawnItem(rule);
                         
                         // Mark as triggered
                         triggeredRules[rule.Name] = true;
                     }
                 }
-            }
-        }
-
-        // Schedule an item spawn with delay
-        private void ScheduleSpawn(SpawnRule rule, float defaultDelay = 1.0f)
-        {
-            // Use the rule's delay or the default
-            float delay = rule.SpawnDelay >= 0 ? rule.SpawnDelay : defaultDelay;
-            
-            if (delay <= 0)
-            {
-                // Spawn immediately
-                SpawnItem(rule);
-            }
-            else
-            {
-                // Start a timer for delayed spawn
-                SpawnItemMailbox.StartTimer(delay, () => SpawnItem(rule));
             }
         }
 
@@ -180,30 +200,54 @@ namespace MurderCult
             try
             {
                 // Get the recipient based on the rule
-                Human recipient = GetRecipient(rule.ItemRecipient);
-                if (recipient == null)
+                Human belongsTo = GetRecipient(rule.ItemRecipient);
+                if (belongsTo == null)
                 {
                     Plugin.Log.LogInfo($"Cannot spawn item for rule '{rule.Name}': No valid recipient found");
                     return;
                 }
 
                 // Get the spawn location
-                Interactable spawnLocation = GetSpawnLocation(rule, recipient);
+                Interactable spawnLocation = GetSpawnLocation(rule, belongsTo);
                 if (spawnLocation == null)
                 {
                     Plugin.Log.LogInfo($"Cannot spawn item for rule '{rule.Name}': No valid spawn location found");
                     return;
                 }
 
-                // Spawn the item using the existing SpawnItemMailbox class
-                SpawnItemMailbox.SpawnItemAtLocation(
-                    recipient,
-                    spawnLocation,
-                    rule.ItemToSpawn,
-                    rule.PositionOffset.ToVector3(),
-                    rule.CustomItemText,
-                    rule.ShowPositionMessage
-                );
+                // Choose the appropriate spawn method based on the location type
+                switch (rule.SpawnLocation)
+                {
+                    case SpawnLocationType.Mailbox:
+                        // Use the mailbox spawner for mailbox locations
+                        SpawnItemMailbox.SpawnItemAtLocation(
+                            belongsTo,
+                            spawnLocation,
+                            rule.ItemToSpawn,
+                            rule.PositionOffset.ToVector3(),
+                            rule.ShowPositionMessage,
+                            rule.UnlockMailbox
+                        );
+                        break;
+                        
+                    // Add cases for other location types here in the future
+                    // case SpawnLocationType.Floor:
+                    //    SpawnItemFloor.SpawnItemAtLocation(...);
+                    //    break;
+                        
+                    default:
+                        // Default to mailbox spawner for now
+                        Plugin.Log.LogInfo($"Using mailbox spawner for location type: {rule.SpawnLocation} (will be implemented in the future)");
+                        SpawnItemMailbox.SpawnItemAtLocation(
+                            belongsTo,
+                            spawnLocation,
+                            rule.ItemToSpawn,
+                            rule.PositionOffset.ToVector3(),
+                            rule.ShowPositionMessage,
+                            rule.UnlockMailbox
+                        );
+                        break;
+                }
             }
             catch (Exception ex)
             {
@@ -212,20 +256,20 @@ namespace MurderCult
         }
 
         // Get the recipient based on the rule type
-        private Human GetRecipient(RecipientType recipientType)
+        private Human GetRecipient(BelongsTo belongsTo)
         {
-            switch (recipientType)
+            switch (belongsTo)
             {
-                case RecipientType.Murderer:
+                case BelongsTo.Murderer:
                     return MurderController.Instance.currentMurderer;
                 
-                case RecipientType.Victim:
+                case BelongsTo.Victim:
                     return MurderController.Instance.currentVictim;
                 
-                case RecipientType.Player:
+                case BelongsTo.Player:
                     return Player.Instance;
                 
-                case RecipientType.Random:
+                case BelongsTo.Random:
                     // Choose randomly between murderer and victim
                     if (UnityEngine.Random.Range(0f, 1f) > 0.5f)
                         return MurderController.Instance.currentMurderer;
@@ -238,12 +282,12 @@ namespace MurderCult
         }
 
         // Get the spawn location based on the rule
-        private Interactable GetSpawnLocation(SpawnRule rule, Human recipient)
+        private Interactable GetSpawnLocation(SpawnRule rule, Human belongsTo)
         {
             switch (rule.SpawnLocation)
             {
                 case SpawnLocationType.Mailbox:
-                    return Toolbox.Instance.GetMailbox(recipient);
+                    return Toolbox.Instance.GetMailbox(belongsTo);
                 
                 case SpawnLocationType.Inventory:
                     return null;
@@ -261,7 +305,7 @@ namespace MurderCult
                     return null;
                 
                 default:
-                    return Toolbox.Instance.GetMailbox(recipient);
+                    return Toolbox.Instance.GetMailbox(belongsTo);
             }
         }
 

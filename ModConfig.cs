@@ -12,7 +12,6 @@ namespace MurderCult
     {
         // General settings
         public bool Enabled { get; set; } = true;
-        public float DefaultSpawnDelay { get; set; } = 1.0f;
         public bool ShowDebugMessages { get; set; } = true;
         
         // List of spawn rules
@@ -30,10 +29,8 @@ namespace MurderCult
                 MurderMO = "TheDoveKiller",
                 ItemToSpawn = "Pencil",
                 SpawnLocation = SpawnLocationType.Mailbox,
-                ItemRecipient = RecipientType.Murderer,
+                ItemRecipient = BelongsTo.Murderer,
                 PositionOffset = new Vector3Serializable(0.2f, 0.0f, 0.12f),
-                CustomItemText = "The Dove Killer was here",
-                SpawnDelay = 1.0f
             });
         }
 
@@ -113,7 +110,7 @@ namespace MurderCult
     }
 
     // Enum for who should receive the item
-    public enum RecipientType
+    public enum BelongsTo
     {
         Murderer,
         Victim,
@@ -138,20 +135,15 @@ namespace MurderCult
         
         // Where to spawn
         public SpawnLocationType SpawnLocation { get; set; } = SpawnLocationType.Mailbox;
-        public RecipientType ItemRecipient { get; set; } = RecipientType.Murderer;
+        public BelongsTo ItemRecipient { get; set; } = BelongsTo.Murderer;
         
         // Custom position
         public Vector3Serializable PositionOffset { get; set; } = new Vector3Serializable(0, 0, 0);
         
-        // Item properties
-        public string CustomItemText { get; set; } = "";
-        
-        // Timing
-        public float SpawnDelay { get; set; } = 1.0f;
-        
         // Additional options
         public bool ShowPositionMessage { get; set; } = true;
         public int SpawnCount { get; set; } = 1;
+        public bool UnlockMailbox { get; set; } = true;
         
         // Custom location (if SpawnLocation is Custom)
         public string CustomLocationName { get; set; } = "";

@@ -69,7 +69,6 @@ namespace MurderCult
                 mailbox,
                 presetName,
                 new Vector3(0.2f, 0.0f, 0.12f),
-                "",
                 true
             );
         }
@@ -80,8 +79,8 @@ namespace MurderCult
             Interactable targetLocation,
             string presetName,
             Vector3 positionOffset,
-            string customText = "",
-            bool showPositionMessage = true)
+            bool showPositionMessageDebug = true,
+            bool unlockMailbox = true)
         {
             try
             {
@@ -92,9 +91,9 @@ namespace MurderCult
                     return;
                 }
 
-                // If target location is a mailbox, unlock it
+                // If target location is a mailbox and unlockMailbox is true, unlock it
                 if (targetLocation != null && targetLocation.preset != null && 
-                    targetLocation.preset.presetName.Contains("Mailbox"))
+                    targetLocation.preset.presetName.Contains("Mailbox") && unlockMailbox)
                 {
                     targetLocation.SetLockedState(false, null, false, true);
                 }
@@ -179,28 +178,9 @@ namespace MurderCult
 
                         Plugin.Log.LogInfo("Moved item to position: " + spawnedItem.wPos.ToString());
                         
-                        if (showPositionMessage)
+                        if (showPositionMessageDebug)
                         {
                             Lib.GameMessage.ShowPlayerSpeech("Item at: " + spawnedItem.wPos.ToString(), 2, true);
-                        }
-
-                        // Try to set custom text if provided
-                        if (!string.IsNullOrEmpty(customText))
-                        {
-                            try
-                            {
-                                // Some items might have a text property
-                                var textProperty = spawnedItem.GetType().GetProperty("text");
-                                if (textProperty != null)
-                                {
-                                    textProperty.SetValue(spawnedItem, customText);
-                                    Plugin.Log.LogInfo("Set custom text on item");
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Plugin.Log.LogInfo("Could not set custom text: " + ex.Message);
-                            }
                         }
                     }
                     catch (Exception ex)
