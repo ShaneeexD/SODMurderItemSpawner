@@ -7,34 +7,35 @@ using BepInEx;
 
 namespace MurderCult
 {
-    [Serializable]
     public class ModConfig
     {
-        // General settings
+        public static ModConfig Instance { get; set; }
+
         public bool Enabled { get; set; } = true;
         public bool ShowDebugMessages { get; set; } = true;
-        
-        // List of spawn rules
+
         public List<SpawnRule> SpawnRules { get; set; } = new List<SpawnRule>();
 
-        // Default constructor with sample rules
+        public string DoormatPresetName { get; set; } = "Doormat";
+        public Vector3 ItemOffsetFromDoormat { get; set; } = new Vector3(0f, 0.05f, 0.15f);
+        public float MaxDoormatDistanceToDoor { get; set; } = 1.5f;
+
         public ModConfig()
         {
-            // Add a default rule as an example
             SpawnRules.Add(new SpawnRule
             {
                 Name = "Default Pencil in Mailbox",
                 Enabled = true,
                 TriggerEvents = new List<string> { "OnVictimKilled" },
-                MurderMO = "TheDoveKiller",
+                MurderMO = "ExampleMO",
                 ItemToSpawn = "Pencil",
+                SpawnChance = 1f,
+                UnlockMailbox = true,
                 SpawnLocation = SpawnLocationType.Mailbox,
                 ItemRecipient = BelongsTo.Murderer,
-                PositionOffset = new Vector3Serializable(0.2f, 0.0f, 0.12f),
             });
         }
 
-        // Save configuration to file
         public void SaveToFile(string filePath)
         {
             try
@@ -49,7 +50,6 @@ namespace MurderCult
             }
         }
 
-        // Load configuration from file
         public static ModConfig LoadFromFile(string filePath)
         {
             try
@@ -65,12 +65,12 @@ namespace MurderCult
                 Plugin.Log.LogError($"Failed to load configuration: {ex.Message}");
             }
 
-            // Return default config if loading fails
             return new ModConfig();
         }
+
+
     }
 
-    // Serializable Vector3 for JSON
     [Serializable]
     public class Vector3Serializable
     {
@@ -98,54 +98,46 @@ namespace MurderCult
         }
     }
 
-    // Enum for spawn location types
     public enum SpawnLocationType
     {
         Mailbox,
-        Inventory,
+        Doormat,
         Floor,
         Desk,
         Bed,
         Custom
     }
 
-    // Enum for who should receive the item
     public enum BelongsTo
     {
         Murderer,
         Victim,
         Player,
+        MurdererNeighbor,
+        VictimNeighbor,
+        MurdererDoctor,
+        VictimDoctor,
+        MurdererLandlord,
+        VictimLandlord,
         Random
     }
 
-    // Class to define a spawn rule
     [Serializable]
     public class SpawnRule
     {
-        // Identification
         public string Name { get; set; } = "Unnamed Rule";
         public bool Enabled { get; set; } = true;
-        
-        // Trigger conditions
+
         public List<string> TriggerEvents { get; set; } = new List<string>();
-        public string MurderMO { get; set; } = "";
-        
-        // What to spawn
+        public string MurderMO { get; set; } = "ExampleMO";
+
         public string ItemToSpawn { get; set; } = "Pencil";
-        
-        // Where to spawn
+
         public SpawnLocationType SpawnLocation { get; set; } = SpawnLocationType.Mailbox;
         public BelongsTo ItemRecipient { get; set; } = BelongsTo.Murderer;
-        
-        // Custom position
-        public Vector3Serializable PositionOffset { get; set; } = new Vector3Serializable(0, 0, 0);
-        
-        // Additional options
-        public bool ShowPositionMessage { get; set; } = true;
+
         public int SpawnCount { get; set; } = 1;
+        public float SpawnChance { get; set; } = 1f;
         public bool UnlockMailbox { get; set; } = true;
-        
-        // Custom location (if SpawnLocation is Custom)
-        public string CustomLocationName { get; set; } = "";
     }
 }

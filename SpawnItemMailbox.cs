@@ -32,58 +32,24 @@ namespace MurderCult
             }
         }
 
-        // Timer functionality for delayed spawns
-        public static void StartTimer(float seconds, Action callback)
-        {
-            Instance.StartCoroutine(Instance.TimerCoroutine(seconds, callback));
-        }
-
-        private IEnumerator TimerCoroutine(float seconds, Action callback)
-        {
-            yield return new WaitForSeconds(seconds);
-            callback?.Invoke();
-        }
-
-        // Original method - kept for backward compatibility
-        public static void SpawnItemInMailbox(string presetName)
-        {
-            // Get the current murderer
-            Human currentMurderer = MurderController.Instance.currentMurderer;
-            if (currentMurderer == null)
-            {
-                Plugin.Log.LogInfo("Cannot spawn item: No active murder or murderer");
-                return;
-            }
-
-            // Get the mailbox
-            Interactable mailbox = Toolbox.Instance.GetMailbox(currentMurderer);
-            if (mailbox == null)
-            {
-                Plugin.Log.LogInfo("Cannot spawn item: Murderer has no mailbox");
-                return;
-            }
-
-            // Use the new method with default values
-            SpawnItemAtLocation(
-                currentMurderer,
-                mailbox,
-                presetName,
-                new Vector3(0.2f, 0.0f, 0.12f),
-                true
-            );
-        }
-
-        // New modular method for spawning items at any location
         public static void SpawnItemAtLocation(
             Human owner,
             Interactable targetLocation,
             string presetName,
-            Vector3 positionOffset,
-            bool showPositionMessageDebug = true,
-            bool unlockMailbox = true)
+            bool unlockMailbox,
+            float spawnChance)
         {
             try
             {
+                float randomValue = UnityEngine.Random.Range(0f, 1f);
+                if (randomValue > spawnChance)
+                {
+                    Plugin.Log.LogInfo($"Cannot spawn item: Spawn chance not met (Random value: {randomValue}, Required chance: {spawnChance})");
+                    return;
+                }
+                
+                Plugin.Log.LogInfo($"Spawn chance check passed (Random value: {randomValue}, Required chance: {spawnChance})");
+                
                 // Validate parameters
                 if (owner == null)
                 {
@@ -100,26 +66,14 @@ namespace MurderCult
 
                 // Get the interactable preset
                 InteractablePreset interactablePresetItem = Toolbox.Instance.GetInteractablePreset(presetName);
+
                 if (interactablePresetItem == null)
                 {
-                    // Try fallback items if the specified one doesn't exist
-                    string[] fallbackItems = { "Pencil", "Note", "Knife" };
-                    foreach (string fallbackItem in fallbackItems)
-                    {
-                        interactablePresetItem = Toolbox.Instance.GetInteractablePreset(fallbackItem);
-                        if (interactablePresetItem != null)
-                        {
-                            Plugin.Log.LogInfo($"Using fallback item: {fallbackItem}");
-                            break;
-                        }
-                    }
-
-                    if (interactablePresetItem == null)
-                    {
-                        Plugin.Log.LogInfo("Cannot spawn item: No valid preset found");
-                        return;
-                    }
+                    Plugin.Log.LogInfo("Cannot spawn item: No valid preset found");
+                    return;
                 }
+                
+
 
                 // Determine spawn position
                 Vector3 spawnPosition;
@@ -134,69 +88,107 @@ namespace MurderCult
                     spawnPosition = owner.transform.position + Vector3.up * 0.5f;
                 }
 
+                // Get the mailbox for placement
+                Interactable targetMailbox = Toolbox.Instance.GetMailbox(owner);
+                
                 // Create the item
                 Interactable spawnedItem = null;
                 try
                 {
-                    // Spawn temporarily high above the player to avoid collision issues
-                    Vector3 tempSpawnPos = Player.Instance.transform.position + Vector3.up * 50f;
-                    
-                    spawnedItem = InteractableCreator.Instance.CreateWorldInteractable(
-                        interactablePresetItem,
-                        Player.Instance,
-                        null,
-                        null,
-                        tempSpawnPos,
-                        Vector3.zero,
-                        null,
-                        null,
-                        ""
-                    );
-                }
-                catch (Exception ex)
-                {
-                    Plugin.Log.LogInfo("Error creating item: " + ex.Message);
-                    return;
-                }
-
-                if (spawnedItem != null)
-                {
-                    Plugin.Log.LogInfo("Successfully spawned item");
-
-                    // Set the owner
-                    spawnedItem.SetOwner(owner, true);
-
-                    // Try to place the item at the target location
-                    try
+                    // Check if we have a valid mailbox with a game location
+                    if (targetMailbox != null && targetMailbox.node != null && targetMailbox.node.gameLocation != null)
                     {
-                        // Apply the position offset
-                        Vector3 finalPosition = spawnPosition + positionOffset;
-
-                        // Apply the position to the item
-                        spawnedItem.wPos = finalPosition;
-                        spawnedItem.UpdateWorldPositionAndNode(true, false);
-
-                        Plugin.Log.LogInfo("Moved item to position: " + spawnedItem.wPos.ToString());
+                        // Get the mailbox's game location
+                        NewGameLocation mailboxLocation = targetMailbox.node.gameLocation;
                         
-                        if (showPositionMessageDebug)
+                        Plugin.Log.LogInfo($"Creating item in mailbox location: {mailboxLocation.name}");
+                        
+                        // Add detailed debugging before attempting to place the object
+                        Plugin.Log.LogInfo($"Mailbox details: Type={targetMailbox.GetType().Name}");
+                        Plugin.Log.LogInfo($"Mailbox position: {targetMailbox.wPos}, rotation: {targetMailbox.wEuler}");
+                        Plugin.Log.LogInfo($"Mailbox node: {(targetMailbox.node != null ? targetMailbox.node.ToString() : "null")}");
+                        Plugin.Log.LogInfo($"Mailbox game location: {mailboxLocation.name}");
+                        Plugin.Log.LogInfo($"Item preset: {interactablePresetItem.name}");
+                        Plugin.Log.LogInfo($"Owner: {(owner != null ? owner.name : "null")}");
+                        
+                        // Check if the mailbox is locked and try to unlock it
+                        Plugin.Log.LogInfo($"Mailbox locked state: {targetMailbox.locked}");
+                        if (targetMailbox.locked)
                         {
-                            Lib.GameMessage.ShowPlayerSpeech("Item at: " + spawnedItem.wPos.ToString(), 2, true);
+                            Plugin.Log.LogInfo("Attempting to unlock mailbox...");
+                            targetMailbox.SetLockedState(false, null, false, true);
+                            Plugin.Log.LogInfo($"Mailbox locked state after unlock attempt: {targetMailbox.locked}");
+                        }
+
+                        // Log detailed debug info about the mailbox rotation
+                        Plugin.Log.LogInfo("=== Mailbox Rotation Info ====");
+                        Plugin.Log.LogInfo($"Mailbox rotation (wEuler): {targetMailbox.wEuler}");
+                        
+                        // Get rotation as quaternion and extract forward/right/up vectors
+                        Quaternion mailboxRotation = Quaternion.Euler(targetMailbox.wEuler);
+                        Vector3 mailboxForward = mailboxRotation * Vector3.forward;
+                        Vector3 mailboxRight = mailboxRotation * Vector3.right;
+                        Vector3 mailboxUp = mailboxRotation * Vector3.up;
+                        
+                        Plugin.Log.LogInfo($"Mailbox forward: {mailboxForward}, right: {mailboxRight}, up: {mailboxUp}");
+                        
+                        // Calculate position with offset based on mailbox rotation
+                        Vector3 spawnPos = targetMailbox.wPos;
+                        
+                        // Define local space offsets
+                        float forwardOffset = -0.15f;   // Z - depth inside mailbox
+                        float rightOffset = 0.1f;      // X - centered
+                        float upOffset = 0.00f;        // Y - slightly above bottom
+                        
+                        // Apply offsets in local space
+                        spawnPos += mailboxForward * forwardOffset;
+                        spawnPos += mailboxRight * rightOffset;
+                        spawnPos += mailboxUp * upOffset;
+                        
+                        Plugin.Log.LogInfo($"Base position: {targetMailbox.wPos}, Offset position: {spawnPos}");
+                        
+                        // Create the item using CreateWorldInteractable
+                        Plugin.Log.LogInfo("Creating item using CreateWorldInteractable with rotation-based offset...");
+                        spawnedItem = InteractableCreator.Instance.CreateWorldInteractable(
+                            interactablePresetItem,  // The item preset
+                            owner,                   // The owner of the item
+                            owner,                   // The writer (same as owner in this case)
+                            Player.Instance,         // The receiver (the player)
+                            spawnPos,                // The position with rotation-based offset
+                            targetMailbox.wEuler,    // The rotation (mailbox rotation)
+                            null,                    // No passed variables
+                            null,                    // No passed object
+                            ""                       // No load GUID
+                        );
+                        
+                        if (spawnedItem != null)
+                        {
+                            // Set the item's node to the mailbox's node
+                           // spawnedItem.node = targetMailbox.node;
+                            
+                            // Update the item's position and node
+                        //    spawnedItem.UpdateWorldPositionAndNode(true, true);
+                            
+                            Plugin.Log.LogInfo($"Successfully created item using CreateWorldInteractable");
+                            Plugin.Log.LogInfo($"Item position: {spawnedItem.wPos}, node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
+                        }
+                        else
+                        {
+                            Plugin.Log.LogError("Failed to create item using CreateWorldInteractable");
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        Plugin.Log.LogInfo("Error placing item: " + ex.Message);
-                    }
                 }
-                else
+                catch (Exception placeEx)
                 {
-                    Plugin.Log.LogInfo("Failed to spawn item");
-                }
-            }
-            catch (Exception ex)
+                    Plugin.Log.LogError($"Exception in PlaceObject: {placeEx.Message}");
+                    Plugin.Log.LogError($"Stack trace: {placeEx.StackTrace}");
+                }              
+            }catch(Exception ex)
             {
-                Plugin.Log.LogInfo("Error in SpawnItemAtLocation: " + ex.Message);
+                Plugin.Log.LogError($"Exception in SpawnItemAtLocation: {ex.Message}");
+                Plugin.Log.LogError($"Stack trace: {ex.StackTrace}");
             }
         }
     }
 }
+   

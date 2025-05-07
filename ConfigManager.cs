@@ -26,10 +26,7 @@ namespace MurderCult
         public List<ModConfig> Configs { get; private set; } = new List<ModConfig>();
         
         // The config folder path
-        private string ConfigFolderPath => Path.Combine(Paths.PluginPath, "MurderItemSpawner");
-
-        // Get the default config file path
-        private string DefaultConfigFilePath => Path.Combine(ConfigFolderPath, "default.json");
+        private string ConfigFolderPath => Path.Combine(Paths.PluginPath, "ShaneeexD-MurderItemSpawner");
 
         // Dictionary to track which rules have been triggered
         private Dictionary<string, bool> triggeredRules = new Dictionary<string, bool>();
@@ -150,12 +147,12 @@ namespace MurderCult
         {
             if (Configs.Count > 0)
             {
-                SaveConfig(Configs[0], "MurderItemSpawner.json");
+                SaveConfig(Configs[0], "DefaultMIS.json");
             }
             else
             {
                 ModConfig defaultConfig = new ModConfig();
-                SaveConfig(defaultConfig, "MurderItemSpawner.json");
+                SaveConfig(defaultConfig, "DefaultMIS.json");
             }
         }
 
@@ -224,9 +221,17 @@ namespace MurderCult
                             belongsTo,
                             spawnLocation,
                             rule.ItemToSpawn,
-                            rule.PositionOffset.ToVector3(),
-                            rule.ShowPositionMessage,
-                            rule.UnlockMailbox
+                            rule.UnlockMailbox,
+                            rule.SpawnChance
+                        );
+                        break;
+                        
+                    case SpawnLocationType.Doormat:
+                        // Use the lobby spawner for lobby locations
+                        SpawnItemDoormat.SpawnItemAtLocation(
+                            belongsTo,
+                            rule.ItemToSpawn,
+                            rule.SpawnChance
                         );
                         break;
                         
@@ -242,9 +247,8 @@ namespace MurderCult
                             belongsTo,
                             spawnLocation,
                             rule.ItemToSpawn,
-                            rule.PositionOffset.ToVector3(),
-                            rule.ShowPositionMessage,
-                            rule.UnlockMailbox
+                            rule.UnlockMailbox,
+                            rule.SpawnChance
                         );
                         break;
                 }
@@ -289,7 +293,23 @@ namespace MurderCult
                 case SpawnLocationType.Mailbox:
                     return Toolbox.Instance.GetMailbox(belongsTo);
                 
-                case SpawnLocationType.Inventory:
+                case SpawnLocationType.Doormat:
+                    // For Lobby spawning, we don't need to return an actual interactable
+                    // SpawnItemDoormat will handle finding a suitable position directly
+                    if (belongsTo != null && belongsTo.home != null)
+                    {
+                        // Just log that we're handling this in SpawnItemDoormat
+                        Plugin.Log.LogInfo($"[ConfigManager] Spawning item in doormat for {belongsTo.name} at {belongsTo.home.name}");
+                        
+                        // Call SpawnItemDoormat directly from here with the owner and item name
+                        SpawnItemDoormat.SpawnItemAtLocation(belongsTo, rule.ItemToSpawn, rule.SpawnChance);
+                        
+                        // Return null since we've already handled the spawning directly
+                        // The SpawnItem method will check the return value and skip further processing
+                        return null;
+                    }
+                    
+                    Plugin.Log.LogWarning($"[ConfigManager] Cannot spawn item in lobby: Owner or home address is null for {belongsTo?.name}");
                     return null;
                 
                 case SpawnLocationType.Floor:
@@ -305,7 +325,7 @@ namespace MurderCult
                     return null;
                 
                 default:
-                    return Toolbox.Instance.GetMailbox(belongsTo);
+                    return null;
             }
         }
 
