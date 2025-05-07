@@ -102,7 +102,7 @@ namespace MurderCult
     {
         Mailbox,
         Doormat,
-        Floor,
+        Lobby,
         Desk,
         Bed,
         Custom

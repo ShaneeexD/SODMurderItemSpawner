@@ -273,6 +273,18 @@ namespace MurderCult
                 case BelongsTo.Player:
                     return Player.Instance;
                 
+                case BelongsTo.MurdererDoctor:
+                    return MurderController.Instance.currentMurderer.GetDoctor();
+                
+                case BelongsTo.VictimDoctor:
+                    return MurderController.Instance.currentVictim.GetDoctor();
+                
+                case BelongsTo.MurdererLandlord:
+                    return MurderController.Instance.currentMurderer.GetLandlord();
+                
+                case BelongsTo.VictimLandlord:
+                    return MurderController.Instance.currentVictim.GetLandlord();
+                
                 case BelongsTo.Random:
                     // Choose randomly between murderer and victim
                     if (UnityEngine.Random.Range(0f, 1f) > 0.5f)
@@ -294,25 +306,25 @@ namespace MurderCult
                     return Toolbox.Instance.GetMailbox(belongsTo);
                 
                 case SpawnLocationType.Doormat:
-                    // For Lobby spawning, we don't need to return an actual interactable
-                    // SpawnItemDoormat will handle finding a suitable position directly
                     if (belongsTo != null && belongsTo.home != null)
                     {
-                        // Just log that we're handling this in SpawnItemDoormat
                         Plugin.Log.LogInfo($"[ConfigManager] Spawning item in doormat for {belongsTo.name} at {belongsTo.home.name}");
-                        
-                        // Call SpawnItemDoormat directly from here with the owner and item name
+
                         SpawnItemDoormat.SpawnItemAtLocation(belongsTo, rule.ItemToSpawn, rule.SpawnChance);
-                        
-                        // Return null since we've already handled the spawning directly
-                        // The SpawnItem method will check the return value and skip further processing
                         return null;
                     }
                     
-                    Plugin.Log.LogWarning($"[ConfigManager] Cannot spawn item in lobby: Owner or home address is null for {belongsTo?.name}");
+                    Plugin.Log.LogWarning($"[ConfigManager] Cannot spawn item in doormat: Owner or home address is null for {belongsTo?.name}");
                     return null;
                 
-                case SpawnLocationType.Floor:
+                case SpawnLocationType.Lobby:
+                    if (belongsTo != null && belongsTo.home != null)
+                    {
+                        Plugin.Log.LogInfo($"[ConfigManager] Spawning item in lobby for {belongsTo.name} at {belongsTo.home.name}");
+
+                        SpawnItemLobby.SpawnItemAtLocation(belongsTo, rule.ItemToSpawn, rule.SpawnChance);
+                        return null;
+                    }
                     return null;
                 
                 case SpawnLocationType.Desk:
