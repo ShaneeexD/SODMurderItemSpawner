@@ -196,17 +196,25 @@ namespace MurderCult
         {
             try
             {
-                // Get the recipient based on the rule
-                Human belongsTo = GetRecipient(rule.ItemRecipient);
-                if (belongsTo == null)
+                // Get the item owner based on the BelongsTo property
+                Human itemOwner = GetOwner(rule.BelongsTo);
+                if (itemOwner == null)
+                {
+                    Plugin.Log.LogInfo($"Cannot spawn item for rule '{rule.Name}': No valid owner found");
+                    return;
+                }
+
+                // Get the recipient (spawn location reference) based on the ItemRecipient property
+                Human spawnLocationRecipient = GetRecipient(rule.Recipient);
+                if (spawnLocationRecipient == null)
                 {
                     Plugin.Log.LogInfo($"Cannot spawn item for rule '{rule.Name}': No valid recipient found");
                     return;
                 }
 
-                // Get the spawn location
-                Interactable spawnLocation = GetSpawnLocation(rule, belongsTo);
-                if (spawnLocation == null)
+                // Get the spawn location using the recipient as reference
+                Interactable spawnLocation = GetSpawnLocation(rule, itemOwner, spawnLocationRecipient);
+                if (spawnLocation == null && rule.SpawnLocation == SpawnLocationType.Mailbox)
                 {
                     Plugin.Log.LogInfo($"Cannot spawn item for rule '{rule.Name}': No valid spawn location found");
                     return;
@@ -218,8 +226,9 @@ namespace MurderCult
                     case SpawnLocationType.Mailbox:
                         // Use the mailbox spawner for mailbox locations
                         SpawnItemMailbox.SpawnItemAtLocation(
-                            belongsTo,
-                            spawnLocation,
+                            itemOwner,                    // Owner of the item
+                            spawnLocationRecipient,       // Recipient used for spawn location reference
+                            spawnLocation,                // The actual spawn location
                             rule.ItemToSpawn,
                             rule.UnlockMailbox,
                             rule.SpawnChance
@@ -227,9 +236,20 @@ namespace MurderCult
                         break;
                         
                     case SpawnLocationType.Doormat:
-                        // Use the lobby spawner for lobby locations
+                        // Use the doormat spawner for doormat locations
                         SpawnItemDoormat.SpawnItemAtLocation(
-                            belongsTo,
+                            itemOwner,                    // Owner of the item
+                            spawnLocationRecipient,        // Recipient used for spawn location reference
+                            rule.ItemToSpawn,
+                            rule.SpawnChance
+                        );
+                        break;
+                        
+                    case SpawnLocationType.Lobby:
+                        // Use the lobby spawner for lobby locations
+                        SpawnItemLobby.SpawnItemAtLocation(
+                            itemOwner,                    // Owner of the item
+                            spawnLocationRecipient,        // Recipient used for spawn location reference
                             rule.ItemToSpawn,
                             rule.SpawnChance
                         );
@@ -243,13 +263,17 @@ namespace MurderCult
                     default:
                         // Default to mailbox spawner for now
                         Plugin.Log.LogInfo($"Using mailbox spawner for location type: {rule.SpawnLocation} (will be implemented in the future)");
-                        SpawnItemMailbox.SpawnItemAtLocation(
-                            belongsTo,
-                            spawnLocation,
-                            rule.ItemToSpawn,
-                            rule.UnlockMailbox,
-                            rule.SpawnChance
-                        );
+                        if (spawnLocation != null)
+                        {
+                            SpawnItemMailbox.SpawnItemAtLocation(
+                                itemOwner,                    // Owner of the item
+                                spawnLocationRecipient,        // Recipient used for spawn location reference
+                                spawnLocation,
+                                rule.ItemToSpawn,
+                                rule.UnlockMailbox,
+                                rule.SpawnChance
+                            );
+                        }
                         break;
                 }
             }
@@ -260,7 +284,7 @@ namespace MurderCult
         }
 
         // Get the recipient based on the rule type
-        private Human GetRecipient(BelongsTo belongsTo)
+        private Human GetOwner(BelongsTo belongsTo)
         {
             switch (belongsTo)
             {
@@ -297,33 +321,66 @@ namespace MurderCult
             }
         }
 
+        private Human GetRecipient(Recipient recipient)
+        {
+            switch (recipient)
+            {
+                case Recipient.Murderer:
+                    return MurderController.Instance.currentMurderer;
+                
+                case Recipient.Victim:
+                    return MurderController.Instance.currentVictim;
+                
+                case Recipient.Player:
+                    return Player.Instance;
+                
+                case Recipient.MurdererDoctor:
+                    return MurderController.Instance.currentMurderer.GetDoctor();
+                
+                case Recipient.VictimDoctor:
+                    return MurderController.Instance.currentVictim.GetDoctor();
+                
+                case Recipient.MurdererLandlord:
+                    return MurderController.Instance.currentMurderer.GetLandlord();
+                
+                case Recipient.VictimLandlord:
+                    return MurderController.Instance.currentVictim.GetLandlord();
+                
+                case Recipient.Random:
+                    // Choose randomly between murderer and victim
+                    if (UnityEngine.Random.Range(0f, 1f) > 0.5f)
+                        return MurderController.Instance.currentMurderer;
+                    else
+                        return MurderController.Instance.currentVictim;
+                
+                default:
+                    return MurderController.Instance.currentMurderer;
+            }
+        }
+
         // Get the spawn location based on the rule
-        private Interactable GetSpawnLocation(SpawnRule rule, Human belongsTo)
+        private Interactable GetSpawnLocation(SpawnRule rule, Human belongsTo, Human recipient)
         {
             switch (rule.SpawnLocation)
             {
                 case SpawnLocationType.Mailbox:
-                    return Toolbox.Instance.GetMailbox(belongsTo);
+                    return Toolbox.Instance.GetMailbox(recipient);
                 
                 case SpawnLocationType.Doormat:
-                    if (belongsTo != null && belongsTo.home != null)
+                    if (recipient != null && recipient.home != null)
                     {
-                        Plugin.Log.LogInfo($"[ConfigManager] Spawning item in doormat for {belongsTo.name} at {belongsTo.home.name}");
-
-                        SpawnItemDoormat.SpawnItemAtLocation(belongsTo, rule.ItemToSpawn, rule.SpawnChance);
-                        return null;
+                        Plugin.Log.LogInfo($"[ConfigManager] Checking doormat location for {belongsTo.name} at {recipient.home.name}");
+                        return null; // Just return null, actual spawning will happen in SpawnItem
                     }
                     
-                    Plugin.Log.LogWarning($"[ConfigManager] Cannot spawn item in doormat: Owner or home address is null for {belongsTo?.name}");
+                    Plugin.Log.LogWarning($"[ConfigManager] Cannot spawn item in doormat: Recipient or home address is null for {recipient?.name}");
                     return null;
                 
                 case SpawnLocationType.Lobby:
-                    if (belongsTo != null && belongsTo.home != null)
+                    if (recipient != null && recipient.home != null)
                     {
-                        Plugin.Log.LogInfo($"[ConfigManager] Spawning item in lobby for {belongsTo.name} at {belongsTo.home.name}");
-
-                        SpawnItemLobby.SpawnItemAtLocation(belongsTo, rule.ItemToSpawn, rule.SpawnChance);
-                        return null;
+                        Plugin.Log.LogInfo($"[ConfigManager] Checking lobby location for {belongsTo.name} at {recipient.home.name}");
+                        return null; // Just return null, actual spawning will happen in SpawnItem
                     }
                     return null;
                 

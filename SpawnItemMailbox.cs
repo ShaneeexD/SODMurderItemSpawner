@@ -33,7 +33,8 @@ namespace MurderCult
         }
 
         public static void SpawnItemAtLocation(
-            Human owner,
+            Human owner,               // The owner of the item (from BelongsTo)
+            Human recipient,           // The recipient used for spawn location (from ItemRecipient)
             Interactable targetLocation,
             string presetName,
             bool unlockMailbox,
@@ -85,11 +86,11 @@ namespace MurderCult
                 else
                 {
                     // If no target location, spawn near the owner
-                    spawnPosition = owner.transform.position + Vector3.up * 0.5f;
+                    spawnPosition = recipient.transform.position + Vector3.up * 0.5f;
                 }
 
                 // Get the mailbox for placement
-                Interactable targetMailbox = Toolbox.Instance.GetMailbox(owner);
+                Interactable targetMailbox = Toolbox.Instance.GetMailbox(recipient);
                 
                 // Create the item
                 Interactable spawnedItem = null;
@@ -110,7 +111,8 @@ namespace MurderCult
                         Plugin.Log.LogInfo($"Mailbox game location: {mailboxLocation.name}");
                         Plugin.Log.LogInfo($"Item preset: {interactablePresetItem.name}");
                         Plugin.Log.LogInfo($"Owner: {(owner != null ? owner.name : "null")}");
-                        
+                        Plugin.Log.LogInfo($"Recipient: {(recipient != null ? recipient.name : "null")}");
+
                         // Check if the mailbox is locked and try to unlock it
                         Plugin.Log.LogInfo($"Mailbox locked state: {targetMailbox.locked}");
                         if (targetMailbox.locked)
@@ -153,7 +155,7 @@ namespace MurderCult
                             interactablePresetItem,  // The item preset
                             owner,                   // The owner of the item
                             owner,                   // The writer (same as owner in this case)
-                            Player.Instance,         // The receiver (the player)
+                            recipient,         // The receiver (the player)
                             spawnPos,                // The position with rotation-based offset
                             targetMailbox.wEuler,    // The rotation (mailbox rotation)
                             null,                    // No passed variables

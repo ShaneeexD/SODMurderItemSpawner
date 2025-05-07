@@ -16,23 +16,20 @@ namespace MurderCult
 
         public List<SpawnRule> SpawnRules { get; set; } = new List<SpawnRule>();
 
-        public string DoormatPresetName { get; set; } = "Doormat";
-        public Vector3 ItemOffsetFromDoormat { get; set; } = new Vector3(0f, 0.05f, 0.15f);
-        public float MaxDoormatDistanceToDoor { get; set; } = 1.5f;
-
         public ModConfig()
         {
             SpawnRules.Add(new SpawnRule
             {
                 Name = "Default Pencil in Mailbox",
                 Enabled = true,
-                TriggerEvents = new List<string> { "OnVictimKilled" },
                 MurderMO = "ExampleMO",
+                TriggerEvents = new List<string> { "OnVictimKilled" },
                 ItemToSpawn = "Pencil",
+                SpawnLocation = SpawnLocationType.Mailbox,
+                BelongsTo = BelongsTo.Murderer,
+                Recipient = Recipient.Victim,
                 SpawnChance = 1f,
                 UnlockMailbox = true,
-                SpawnLocation = SpawnLocationType.Mailbox,
-                ItemRecipient = BelongsTo.Murderer,
             });
         }
 
@@ -122,6 +119,20 @@ namespace MurderCult
         Random
     }
 
+    public enum Recipient
+    {
+        Murderer,
+        Victim,
+        Player,
+        MurdererNeighbor,
+        VictimNeighbor,
+        MurdererDoctor,
+        VictimDoctor,
+        MurdererLandlord,
+        VictimLandlord,
+        Random
+    }
+
     [Serializable]
     public class SpawnRule
     {
@@ -134,7 +145,9 @@ namespace MurderCult
         public string ItemToSpawn { get; set; } = "Pencil";
 
         public SpawnLocationType SpawnLocation { get; set; } = SpawnLocationType.Mailbox;
-        public BelongsTo ItemRecipient { get; set; } = BelongsTo.Murderer;
+        public BelongsTo BelongsTo { get; set; } = BelongsTo.Murderer;
+
+        public Recipient Recipient { get; set; } = Recipient.Murderer;
 
         public int SpawnCount { get; set; } = 1;
         public float SpawnChance { get; set; } = 1f;

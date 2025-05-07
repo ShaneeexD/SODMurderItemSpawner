@@ -24,7 +24,7 @@ namespace MurderCult
         }
 
         // Method to spawn an item at a location in the lobby
-        public static void SpawnItemAtLocation(Human owner, string presetName, float spawnChance = 1.0f)
+        public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float spawnChance = 1.0f)
         {
             try
             {
@@ -44,18 +44,20 @@ namespace MurderCult
                     return;
                 }
 
-                // Get the owner's address
-                if (owner == null || owner.home == null)
+                // Get the recipient's address (where to spawn the item)
+                if (recipient == null || recipient.home == null)
                 {
-                    Plugin.Log.LogWarning($"[SpawnItemLobby] Owner has no valid address. Cannot spawn {presetName}");
+                    Plugin.Log.LogWarning($"[SpawnItemLobby] Recipient has no valid address. Cannot spawn {presetName}");
                     return;
                 }
 
-                NewAddress ownerAddress = owner.home;
-                Plugin.Log.LogInfo($"[SpawnItemLobby] Owner: {owner.name}, Address: {ownerAddress.name}");
+                NewAddress recipientAddress = recipient.home;
+                Plugin.Log.LogInfo($"[SpawnItemLobby] Owner: {owner.name}, Recipient: {recipient.name}, Address: {recipientAddress.name}");
 
                 // Spawn the item using the same approach as the game's SpawnSpareKey method
-                Interactable spawnedItem = SpawnItemOnDoormat(ownerAddress, interactablePresetItem, owner, presetName);
+                Interactable spawnedItem = SpawnItemOnDoormat(recipientAddress, interactablePresetItem, owner, presetName);
+                
+                spawnedItem.SetOwner(owner);
 
                 if (spawnedItem != null)
                 {
@@ -309,9 +311,6 @@ namespace MurderCult
                     Plugin.Log.LogError($"[SpawnItemLobby] Error during spawning with modified node: {ex.Message}");
                     return null; // Return null to indicate failure
                 }
-
-                // Return null if we somehow get here
-                return null;
             }
 
             Plugin.Log.LogWarning($"[SpawnItemLobby] No doormats found near any entrances of {address.name} for item {itemNameForLog}.");
