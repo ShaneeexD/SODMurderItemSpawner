@@ -220,6 +220,11 @@ namespace MurderCult
                     return;
                 }
 
+                if (rule.SpawnLocation == SpawnLocationType.BuildingEntrance)
+                {
+                    
+                }
+
                 // Choose the appropriate spawn method based on the location type
                 switch (rule.SpawnLocation)
                 {
@@ -252,6 +257,16 @@ namespace MurderCult
                             spawnLocationRecipient,        // Recipient used for spawn location reference
                             rule.ItemToSpawn,
                             rule.SpawnChance
+                        );
+                        break;
+
+                    case SpawnLocationType.BuildingEntrance:
+                        SpawnItemBuildingEntrance.SpawnItemAtLocation(
+                            itemOwner,                    // Owner of the item
+                            spawnLocationRecipient,        // Recipient used for spawn location reference
+                            rule.ItemToSpawn,
+                            rule.SpawnChance,
+                            rule.SubLocationTypeBuildingEntrances
                         );
                         break;
                         
@@ -384,7 +399,12 @@ namespace MurderCult
                     }
                     return null;
                 
-                case SpawnLocationType.Desk:
+                case SpawnLocationType.BuildingEntrance:
+                    if (recipient != null && recipient.home != null)
+                    {
+                        Plugin.Log.LogInfo($"[ConfigManager] Checking lobby location for {belongsTo.name} at {recipient.home.name}");
+                        return null; // Just return null, actual spawning will happen in SpawnItem
+                    }
                     return null;
                 
                 case SpawnLocationType.Bed:

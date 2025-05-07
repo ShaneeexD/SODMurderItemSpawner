@@ -8,6 +8,7 @@ namespace MurderCult
     public class SpawnItemBuildingEntrance : MonoBehaviour
     {
         private static SpawnItemBuildingEntrance _instance;
+        private static Vector3 spawnPosition;
         private static SpawnItemBuildingEntrance Instance
         {
             get
@@ -23,7 +24,7 @@ namespace MurderCult
         }
 
         // Method to spawn an item at a building entrance
-        public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float spawnChance = 1.0f)
+        public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float spawnChance, SubLocationTypeBuildingEntrances subLocationTypeBuildingEntrances)
         {
             try
             {
@@ -54,7 +55,7 @@ namespace MurderCult
                 Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Owner: {owner.name}, Recipient: {recipient.name}, Address: {recipientAddress.name}");
 
                 // Find the building entrance and spawn the item
-                Interactable spawnedItem = SpawnItemAtBuildingEntrance(recipientAddress, interactablePresetItem, owner, recipient, presetName);
+                Interactable spawnedItem = SpawnItemAtBuildingEntrance(recipientAddress, interactablePresetItem, owner, recipient, presetName, spawnChance, subLocationTypeBuildingEntrances);
                 
                 if (spawnedItem != null)
                 {
@@ -77,7 +78,7 @@ namespace MurderCult
         }
 
         // Method to spawn an item at a building entrance
-        private static Interactable SpawnItemAtBuildingEntrance(NewAddress address, InteractablePreset itemPreset, Human owner, Human recipient, string itemNameForLog)
+        private static Interactable SpawnItemAtBuildingEntrance(NewAddress address, InteractablePreset itemPreset, Human owner, Human recipient, string itemNameForLog, float spawnChance, SubLocationTypeBuildingEntrances subLocationTypeBuildingEntrances)
         {
             if (address == null)
             {
@@ -85,42 +86,175 @@ namespace MurderCult
                 return null;
             }
 
-            // Find entrances to the building
-            var entrances = address.entrances;
-            
-            if (entrances == null || entrances.Count == 0)
+            // First, try to get the building directly from the address
+            var building = address.building;
+            if (building != null)
             {
-                Plugin.Log.LogWarning($"[SpawnItemBuildingEntrance] No entrances found for {address.name}");
+                Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found building directly from address: {building.name}");
+            }
+            else
+            {
+                Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] No building found directly from address, trying floor");
+                
+                // Fall back to getting the floor
+                if (address.floor != null)
+                {
+                    Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found floor for address {address.name}");
+                }
+                else
+                {
+                    Plugin.Log.LogWarning($"[SpawnItemBuildingEntrance] Could not find floor for address {address.name}");
+                    return null;
+                }
+            }
+            
+            // Now find the building's main entrance that connects to a street
+            NewWall entranceWall = null;
+            NewWall mainEntranceWall = null;
+            
+            // First check if we can get the main entrance directly from the building
+            if (building != null && building.mainEntrance != null)
+            {
+                mainEntranceWall = building.mainEntrance;
+                Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found main entrance directly from building");
+            }
+            // If not, check additional entrances from the building
+            else if (building != null && building.additionalEntrances != null && building.additionalEntrances.Count > 0)
+            {
+                Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Checking {building.additionalEntrances.Count} additional entrances from building");
+                
+                // Try to find an entrance that connects to a street
+                foreach (var entrance in building.additionalEntrances)
+                {
+                    if (entrance == null) continue;
+                    
+                    // Check if this entrance connects to a street
+                    NewNode streetNode = entrance.otherWall.node;
+                    if (streetNode != null && streetNode.gameLocation != null && 
+                        streetNode.gameLocation.thisAsStreet != null)
+                    {
+                        mainEntranceWall = entrance;
+                        Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found street entrance in building's additional entrances");
+                        break;
+                    }
+                }
+            }
+            
+            // If we still don't have a main entrance, look for building entrances on the floor
+            if (mainEntranceWall == null && address.floor != null && address.floor.buildingEntrances != null && address.floor.buildingEntrances.Count > 0)
+            {
+                Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Checking {address.floor.buildingEntrances.Count} entrances from floor");
+                
+                // Try to find an entrance that connects to a street
+                foreach (var entrance in address.floor.buildingEntrances)
+                {
+                    if (entrance == null) continue;
+                    
+                    // Check if this entrance connects to a street
+                    NewNode streetNode = entrance.otherWall.node;
+                    if (streetNode != null && streetNode.gameLocation != null && 
+                        streetNode.gameLocation.thisAsStreet != null)
+                    {
+                        mainEntranceWall = entrance;
+                        Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found street entrance in building entrances");
+                        break;
+                    }
+                }
+            }
+            
+            // If we still don't have a main entrance, fall back to the address entrances
+            if (mainEntranceWall == null)
+            {
+                var entrances = address.entrances;
+                
+                if (entrances == null || entrances.Count == 0)
+                {
+                    Plugin.Log.LogWarning($"[SpawnItemBuildingEntrance] No entrances found for {address.name}");
+                    return null;
+                }
+                
+                // Try to find an entrance that connects to a street
+                foreach (var entrance in entrances)
+                {
+                    if (entrance.wall == null) continue;
+                    
+                    // Check if this entrance connects to a street
+                    NewNode streetNode = entrance.wall.otherWall.node;
+                    if (streetNode != null && streetNode.gameLocation != null && 
+                        streetNode.gameLocation.thisAsStreet != null)
+                    {
+                        mainEntranceWall = entrance.wall;
+                        Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found street entrance from address entrances for {address.name}");
+                        break;
+                    }
+                }
+            }
+            
+            // If we found a main entrance to a street, use it
+            if (mainEntranceWall != null)
+            {
+                entranceWall = mainEntranceWall;
+                Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Using main entrance to street for building");
+            }
+            // Otherwise fall back to the first entrance of the address
+            else if (address.entrances != null && address.entrances.Count > 0)
+            {
+                entranceWall = address.entrances[0].wall;
+                Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] No street entrance found, using first address entrance for {address.name}");
+            }
+            else
+            {
+                Plugin.Log.LogWarning($"[SpawnItemBuildingEntrance] No entrances found for building or address");
                 return null;
             }
             
-            // Get the first entrance wall
-            NewWall entranceWall = entrances[0].wall;
             if (entranceWall == null)
             {
                 Plugin.Log.LogWarning($"[SpawnItemBuildingEntrance] Entrance wall is null for {address.name}");
                 return null;
             }
             
-            Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found entrance for {address.name}");
+            Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Using entrance for {address.name}");
             
             // Get the node on the street side of the entrance
             NewNode entranceNode = entranceWall.otherWall.node;
             bool isStreetNode = false;
             
             // Check if the node is on a street (streets have different game location than the address)
-            if (entranceNode != null && entranceNode.gameLocation != null && entranceNode.gameLocation != address)
+            if (entranceNode != null && entranceNode.gameLocation != null)
             {
-                isStreetNode = true;
+                // Specifically check if this is a street node
+                if (entranceNode.gameLocation.thisAsStreet != null)
+                {
+                    isStreetNode = true;
+                    Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found street node on otherWall side for {address.name}");
+                }
+                // Also accept if it's just outside the address
+                else if (entranceNode.gameLocation != address)
+                {
+                    isStreetNode = true;
+                    Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found outside node on otherWall side for {address.name}");
+                }
             }
             
             // If not a street node, try the other side
             if (!isStreetNode)
             {
                 entranceNode = entranceWall.node;
-                if (entranceNode != null && entranceNode.gameLocation != null && entranceNode.gameLocation != address)
+                if (entranceNode != null && entranceNode.gameLocation != null)
                 {
-                    isStreetNode = true;
+                    // Specifically check if this is a street node
+                    if (entranceNode.gameLocation.thisAsStreet != null)
+                    {
+                        isStreetNode = true;
+                        Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found street node on wall side for {address.name}");
+                    }
+                    // Also accept if it's just outside the address
+                    else if (entranceNode.gameLocation != address)
+                    {
+                        isStreetNode = true;
+                        Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found outside node on wall side for {address.name}");
+                    }
                 }
             }
             
@@ -145,11 +279,20 @@ namespace MurderCult
             }
             
             // Calculate an offset position in front of the entrance
-            float offsetDistance = 1.0f; // Distance from the entrance
-            Vector3 spawnPosition = entrancePosition + (wallDirection * offsetDistance);
+            if (subLocationTypeBuildingEntrances == SubLocationTypeBuildingEntrances.Inside)
+            {
+                float offsetDistance = -2.0f; // Distance from the entrance
+                spawnPosition = entrancePosition + (wallDirection * offsetDistance);
+                spawnPosition.y += 0.0f;
+            }else if (subLocationTypeBuildingEntrances == SubLocationTypeBuildingEntrances.Outside)
+            {
+                float offsetDistance = 1.0f; // Distance from the entrance
+                spawnPosition = entrancePosition + (wallDirection * offsetDistance);
+                spawnPosition.y += 0.1f;
+            }
             
             // Add a small height offset to ensure it's not on the ground
-            spawnPosition.y += 0.0f;
+            
             
             Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Entrance position: {entrancePosition}, Wall direction: {wallDirection}");
             Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Calculated spawn position: {spawnPosition}");

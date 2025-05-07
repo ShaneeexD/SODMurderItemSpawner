@@ -30,6 +30,7 @@ namespace MurderCult
                 Recipient = Recipient.Victim,
                 SpawnChance = 1f,
                 UnlockMailbox = true,
+                SubLocationTypeBuildingEntrances = SubLocationTypeBuildingEntrances.Inside
             });
         }
 
@@ -100,9 +101,15 @@ namespace MurderCult
         Mailbox,
         Doormat,
         Lobby,
-        Desk,
+        BuildingEntrance,
         Bed,
         Custom
+    }
+
+    public enum SubLocationTypeBuildingEntrances
+    {
+        Inside,
+        Outside
     }
 
     public enum BelongsTo
@@ -152,5 +159,6 @@ namespace MurderCult
         public int SpawnCount { get; set; } = 1;
         public float SpawnChance { get; set; } = 1f;
         public bool UnlockMailbox { get; set; } = true;
+        public SubLocationTypeBuildingEntrances SubLocationTypeBuildingEntrances { get; set; } = SubLocationTypeBuildingEntrances.Inside;
     }
 }
