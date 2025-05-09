@@ -4,7 +4,7 @@ using HarmonyLib;
 using SOD.Common;
 using UnityEngine;
 
-namespace MurderCult
+namespace MurderItemSpawner
 {
     // Patch to detect murder events
     [HarmonyPatch(typeof(MurderController), "OnVictimKilled")]

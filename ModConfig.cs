@@ -5,7 +5,7 @@ using System.Text.Json;
 using UnityEngine;
 using BepInEx;
 
-namespace MurderCult
+namespace MurderItemSpawner
 {
     public class ModConfig
     {
@@ -30,7 +30,8 @@ namespace MurderCult
                 Recipient = Recipient.Victim,
                 SpawnChance = 1f,
                 UnlockMailbox = true,
-                SubLocationTypeBuildingEntrances = SubLocationTypeBuildingEntrances.Inside
+                SubLocationTypeBuildingEntrances = SubLocationTypeBuildingEntrances.Inside,
+                RandomSpawnLocations = new List<string> { "Doormat", "Lobby", "BuildingEntrance", "WorkplaceBuildingEntrance" }
             });
         }
 
@@ -100,10 +101,10 @@ namespace MurderCult
     {
         Mailbox,
         Doormat,
-        Lobby,
-        BuildingEntrance,
-        Bed,
-        Custom
+        HomeLobby,
+        HomeBuildingEntrance,
+        WorkplaceBuildingEntrance,
+        Random,
     }
 
     public enum SubLocationTypeBuildingEntrances
@@ -160,5 +161,7 @@ namespace MurderCult
         public float SpawnChance { get; set; } = 1f;
         public bool UnlockMailbox { get; set; } = true;
         public SubLocationTypeBuildingEntrances SubLocationTypeBuildingEntrances { get; set; } = SubLocationTypeBuildingEntrances.Inside;
+        public List<string> RandomSpawnLocations { get; set; } = new List<string>();
+
     }
 }

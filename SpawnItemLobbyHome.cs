@@ -2,21 +2,22 @@ using System;
 using System.Collections.Generic;
 using SOD.Common;
 using UnityEngine;
+using UnityEngine.UIElements.StyleSheets;
 
 namespace MurderItemSpawner
 {
-    public class SpawnItemDoormat : MonoBehaviour
+    public class SpawnItemLobbyHome : MonoBehaviour
     {
-        private static SpawnItemDoormat _instance;
-        private static SpawnItemDoormat Instance
+        private static SpawnItemLobbyHome _instance;
+        private static SpawnItemLobbyHome Instance
         {
             get
             {
                 if (_instance == null)
                 {
-                    GameObject go = new GameObject("SpawnItemDoormat_Instance");
+                    GameObject go = new GameObject("SpawnItemLobbyHome_Instance");
                     DontDestroyOnLoad(go);
-                    _instance = go.AddComponent<SpawnItemDoormat>();
+                    _instance = go.AddComponent<SpawnItemLobbyHome>();
                 }
                 return _instance;
             }
@@ -31,7 +32,7 @@ namespace MurderItemSpawner
                 float randomValue = UnityEngine.Random.Range(0f, 1f);
                 if (randomValue > spawnChance)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemDoormat] Skipping spawn of {presetName} due to chance (roll: {randomValue}, needed: <= {spawnChance})");
+                    Plugin.Log.LogInfo($"[SpawnItemLobby] Skipping spawn of {presetName} due to chance (roll: {randomValue}, needed: <= {spawnChance})");
                     return;
                 }
 
@@ -39,19 +40,19 @@ namespace MurderItemSpawner
                 InteractablePreset interactablePresetItem = Toolbox.Instance.GetInteractablePreset(presetName);
                 if (interactablePresetItem == null)
                 {
-                    Plugin.Log.LogError($"[SpawnItemDoormat] Could not find interactable preset with name {presetName}");
+                    Plugin.Log.LogError($"[SpawnItemLobby] Could not find interactable preset with name {presetName}");
                     return;
                 }
 
                 // Get the recipient's address (where to spawn the item)
                 if (recipient == null || recipient.home == null)
                 {
-                    Plugin.Log.LogWarning($"[SpawnItemDoormat] Recipient has no valid address. Cannot spawn {presetName}");
+                    Plugin.Log.LogWarning($"[SpawnItemLobby] Recipient has no valid address. Cannot spawn {presetName}");
                     return;
                 }
 
                 NewAddress recipientAddress = recipient.home;
-                Plugin.Log.LogInfo($"[SpawnItemDoormat] Owner: {owner.name}, Recipient: {recipient.name}, Address: {recipientAddress.name}");
+                Plugin.Log.LogInfo($"[SpawnItemLobby] Owner: {owner.name}, Recipient: {recipient.name}, Address: {recipientAddress.name}");
 
                 // Spawn the item using the same approach as the game's SpawnSpareKey method
                 Interactable spawnedItem = SpawnItemOnDoormat(recipientAddress, interactablePresetItem, owner, presetName);
@@ -60,16 +61,17 @@ namespace MurderItemSpawner
 
                 if (spawnedItem != null)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemDoormat] Successfully spawned '{presetName}' on doormat in lobby. Item node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
+                    Plugin.Log.LogInfo($"[SpawnItemLobby] Successfully spawned '{presetName}' on doormat in lobby. Item node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
+                    Plugin.Log.LogInfo($"[SpawnItemLobby] Item '{presetName}' final world position: {spawnedItem.wPos}");
                 }
                 else
                 {
-                    Plugin.Log.LogError($"[SpawnItemDoormat] Failed to create furniture spawned interactable '{presetName}'.");
+                    Plugin.Log.LogError($"[SpawnItemLobby] Failed to create furniture spawned interactable '{presetName}'.");
                 }
             }
             catch (Exception ex)
             {
-                Plugin.Log.LogError($"[SpawnItemDoormat] Error spawning item {presetName}: {ex.Message}");
+                Plugin.Log.LogError($"[SpawnItemLobby] Error spawning item {presetName}: {ex.Message}");
             }
         }
 
@@ -78,7 +80,7 @@ namespace MurderItemSpawner
         {
             if (address == null)
             {
-                Plugin.Log.LogWarning($"[SpawnItemDoormat] Address is null for {itemNameForLog}.");
+                Plugin.Log.LogWarning($"[SpawnItemLobby] Address is null for {itemNameForLog}.");
                 return null;
             }
 
@@ -197,28 +199,122 @@ namespace MurderItemSpawner
                 FurnitureLocation targetLocation = doormatLocations[doormatIndex];
                 NewRoom targetRoom = doormatRooms[doormatIndex];
 
+                // Try to find the closest entrance node to calculate rotation
+                NewNode entranceNode = null;
+                float closestDistance = float.MaxValue;
+                foreach (NewNode.NodeAccess nodeAccess in address.entrances)
+                {
+                    if (nodeAccess.wall != null)
+                    {
+                        // Check both sides of the wall
+                        if (nodeAccess.wall.node.gameLocation != address && nodeAccess.wall.node.gameLocation.isLobby)
+                        {
+                            float distance = Vector3.Distance(nodeAccess.wall.node.nodeCoord, targetLocation.anchorNode.nodeCoord);
+                            if (distance < closestDistance)
+                            {
+                                closestDistance = distance;
+                                entranceNode = nodeAccess.wall.node;
+                            }
+                        }
+                        else if (nodeAccess.wall.otherWall.node.gameLocation != address && nodeAccess.wall.otherWall.node.gameLocation.isLobby)
+                        {
+                            float distance = Vector3.Distance(nodeAccess.wall.otherWall.node.nodeCoord, targetLocation.anchorNode.nodeCoord);
+                            if (distance < closestDistance)
+                            {
+                                closestDistance = distance;
+                                entranceNode = nodeAccess.wall.otherWall.node;
+                            }
+                        }
+                    }
+                }
+                
+                // Calculate rotation based on the direction from doormat to entrance
+                Quaternion doormatRotation = Quaternion.identity;
+                Vector3 doormatPosition = targetLocation.anchorNode.position;
+                
+                if (entranceNode != null)
+                {
+                    Vector3 entrancePosition = entranceNode.position;
+                    Vector3 directionToEntrance = (entrancePosition - doormatPosition).normalized;
+                    doormatRotation = Quaternion.LookRotation(directionToEntrance);
+                    Plugin.Log.LogInfo($"[SpawnItemLobby] Calculated rotation based on entrance direction: {doormatRotation.eulerAngles}");
+                }
+                else
+                {
+                    Plugin.Log.LogWarning($"[SpawnItemLobby] Could not find an entrance node, using identity rotation");
+                }
+                
+                // Extract rotation vectors
+                Vector3 doormatForward = doormatRotation * Vector3.forward;
+                Vector3 doormatRight = doormatRotation * Vector3.right;
+                Vector3 doormatUp = doormatRotation * Vector3.up;
+                // Define offset values
+                float forwardOffset = 1.0f;    // Z - forward from doormat
+                float rightOffset = UnityEngine.Random.Range(-1.0f, 1.0f);     // X - to the side
+                float upOffset = 0.00f;        // Y - same height
+                float rotationOffset = UnityEngine.Random.Range(0, 360); // x - rotation
+                doormatRotation = Quaternion.Euler(doormatRotation.eulerAngles + new Vector3(rotationOffset, 0, 0));
+
+                // Calculate the offset position
+                Vector3 offsetPosition = doormatPosition + 
+                                        (doormatForward * forwardOffset) + 
+                                        (doormatRight * rightOffset) + 
+                                        (doormatUp * upOffset);
+                
+                Plugin.Log.LogInfo($"[SpawnItemLobby] Original doormat position: {doormatPosition}");
+                Plugin.Log.LogInfo($"[SpawnItemLobby] Calculated offset position: {offsetPosition}");
+                
                 // Create a list of passed variables for the room ID, just like the game does
                 Il2CppSystem.Collections.Generic.List<Interactable.Passed> passedVars = new Il2CppSystem.Collections.Generic.List<Interactable.Passed>();
-                passedVars.Add(new Interactable.Passed(Interactable.PassedVarType.roomID, targetRoom.roomID, null));
+                passedVars.Add(new Interactable.Passed(Interactable.PassedVarType.roomID, targetLocation.anchorNode.room.roomID, null));
 
-                Interactable spawnedItem = InteractableCreator.Instance.CreateFurnitureSpawnedInteractableThreadSafe(
-                    itemPreset,
-                    targetLocation.anchorNode.room,
-                    targetLocation,
-                    targetSubObject,
-                    owner,
-                    owner,
-                    null,
-                    passedVars,
-                    null,
-                    null,
-                    ""
-                );
-
-                return spawnedItem;
+                try {
+                    // Spawn the item at the original doormat location first
+                    Interactable spawnedItem = InteractableCreator.Instance.CreateFurnitureSpawnedInteractableThreadSafe(
+                        itemPreset,
+                        targetLocation.anchorNode.room,
+                        targetLocation,
+                        targetSubObject,
+                        owner,
+                        owner,
+                        null,
+                        passedVars,
+                        null,
+                        null,
+                        ""
+                    );
+                    
+                    if (spawnedItem != null)
+                    {
+                        // Now directly update the spawned item's position properties
+                        Plugin.Log.LogInfo($"[SpawnItemLobby] Item spawned successfully. Original position: {spawnedItem.wPos}");
+                        
+                        // Update the item's position directly, similar to how RaiseLightswitch does it
+                        Vector3 worldPosition = offsetPosition;
+                        
+                        // Calculate local position offset from the node's position
+                        Vector3 localOffset = worldPosition - doormatPosition;
+                        
+                        // Update all position properties
+                        spawnedItem.lPos = localOffset;  // Local position relative to anchor
+                        spawnedItem.wPos = worldPosition; // World position
+                        spawnedItem.spWPos = worldPosition; // Saved/serialized world position
+                        spawnedItem.wEuler = doormatRotation.eulerAngles;
+                        Plugin.Log.LogInfo($"[SpawnItemLobby] Item repositioned to offset. New position: {spawnedItem.wPos}");
+                    }
+                    else
+                    {
+                        Plugin.Log.LogError($"[SpawnItemLobby] Failed to spawn item at doormat location");
+                    }
+                    
+                    return spawnedItem;
+                } catch (Exception ex) {
+                    Plugin.Log.LogError($"[SpawnItemLobby] Error during spawning with modified node: {ex.Message}");
+                    return null; // Return null to indicate failure
+                }
             }
 
-            Plugin.Log.LogWarning($"[SpawnItemDoormat] No doormats found near any entrances of {address.name} for item {itemNameForLog}.");
+            Plugin.Log.LogWarning($"[SpawnItemLobby] No doormats found near any entrances of {address.name} for item {itemNameForLog}.");
             return null;
         }
     }

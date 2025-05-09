@@ -2,7 +2,7 @@ using BepInEx;
 using SOD.Common.BepInEx;
 using System.Reflection;
 using BepInEx.Configuration;
-namespace MurderCult
+namespace MurderItemSpawner
 {
     [BepInPlugin(PLUGIN_GUID, PLUGIN_NAME, PLUGIN_VERSION)]
     [BepInDependency(SOD.Common.Plugin.PLUGIN_GUID)]

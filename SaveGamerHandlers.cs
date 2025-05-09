@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 using UnityStandardAssets.Characters.FirstPerson;
 using HarmonyLib;
 
-namespace MurderCult
+namespace MurderItemSpawner
 {
     public class SaveGamerHandlers : MonoBehaviour
     {

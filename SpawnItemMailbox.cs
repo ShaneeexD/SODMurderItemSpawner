@@ -11,7 +11,7 @@ using SOD.Common.Extensions;
 using BepInEx;
 using HarmonyLib;
 
-namespace MurderCult
+namespace MurderItemSpawner
 {
     public class SpawnItemMailbox : MonoBehaviour
     {

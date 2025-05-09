@@ -5,7 +5,7 @@ using System.Linq;
 using UnityEngine;
 using BepInEx;
 
-namespace MurderCult
+namespace MurderItemSpawner
 {
     public class ConfigManager
     {
@@ -220,7 +220,7 @@ namespace MurderCult
                     return;
                 }
 
-                if (rule.SpawnLocation == SpawnLocationType.BuildingEntrance)
+                if (rule.SpawnLocation == SpawnLocationType.HomeBuildingEntrance)
                 {
                     
                 }
@@ -250,9 +250,9 @@ namespace MurderCult
                         );
                         break;
                         
-                    case SpawnLocationType.Lobby:
+                    case SpawnLocationType.HomeLobby:
                         // Use the lobby spawner for lobby locations
-                        SpawnItemLobby.SpawnItemAtLocation(
+                        SpawnItemLobbyHome.SpawnItemAtLocation(
                             itemOwner,                    // Owner of the item
                             spawnLocationRecipient,        // Recipient used for spawn location reference
                             rule.ItemToSpawn,
@@ -260,14 +260,28 @@ namespace MurderCult
                         );
                         break;
 
-                    case SpawnLocationType.BuildingEntrance:
-                        SpawnItemBuildingEntrance.SpawnItemAtLocation(
+                    case SpawnLocationType.HomeBuildingEntrance:
+                        SpawnItemBuildingEntranceHome.SpawnItemAtLocation(
                             itemOwner,                    // Owner of the item
                             spawnLocationRecipient,        // Recipient used for spawn location reference
                             rule.ItemToSpawn,
                             rule.SpawnChance,
                             rule.SubLocationTypeBuildingEntrances
                         );
+                        break;
+                        
+                    case SpawnLocationType.WorkplaceBuildingEntrance:
+                        SpawnItemBuildingEntranceWorkplace.SpawnItemAtLocation(
+                            itemOwner,                    // Owner of the item
+                            spawnLocationRecipient,        // Recipient used for spawn location reference
+                            rule.ItemToSpawn,
+                            rule.SpawnChance,
+                            rule.SubLocationTypeBuildingEntrances
+                        );
+                        break;
+
+                    case SpawnLocationType.Random:
+                       
                         break;
                         
                     // Add cases for other location types here in the future
@@ -391,7 +405,7 @@ namespace MurderCult
                     Plugin.Log.LogWarning($"[ConfigManager] Cannot spawn item in doormat: Recipient or home address is null for {recipient?.name}");
                     return null;
                 
-                case SpawnLocationType.Lobby:
+                case SpawnLocationType.HomeLobby:
                     if (recipient != null && recipient.home != null)
                     {
                         Plugin.Log.LogInfo($"[ConfigManager] Checking lobby location for {belongsTo.name} at {recipient.home.name}");
@@ -399,18 +413,24 @@ namespace MurderCult
                     }
                     return null;
                 
-                case SpawnLocationType.BuildingEntrance:
+                case SpawnLocationType.HomeBuildingEntrance:
                     if (recipient != null && recipient.home != null)
                     {
-                        Plugin.Log.LogInfo($"[ConfigManager] Checking lobby location for {belongsTo.name} at {recipient.home.name}");
+                        Plugin.Log.LogInfo($"[ConfigManager] Checking building entrance location for {belongsTo.name} at {recipient.home.name}");
                         return null; // Just return null, actual spawning will happen in SpawnItem
                     }
                     return null;
                 
-                case SpawnLocationType.Bed:
+                case SpawnLocationType.WorkplaceBuildingEntrance:
+                    if (belongsTo != null && belongsTo.job != null && belongsTo.job.employer != null && belongsTo.job.employer.address != null)
+                    {
+                        Plugin.Log.LogInfo($"[ConfigManager] Checking workplace building entrance location for {belongsTo.name} at {belongsTo.job.employer.address.name}");
+                        return null; // Just return null, actual spawning will happen in SpawnItem
+                    }
                     return null;
                 
-                case SpawnLocationType.Custom:
+                case SpawnLocationType.Random:
+                    
                     return null;
                 
                 default:
