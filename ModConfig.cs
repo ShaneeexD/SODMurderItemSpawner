@@ -106,6 +106,7 @@ namespace MurderItemSpawner
         HomeBuildingEntrance,
         WorkplaceBuildingEntrance,
         CityHallBathroom,
+        HotelRooftopBar,
         Random,
     }
 

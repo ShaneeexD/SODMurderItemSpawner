@@ -289,6 +289,15 @@ namespace MurderItemSpawner
                             rule.SubLocationTypeBuildingEntrances
                         );
                         break;
+
+                    case SpawnLocationType.HotelRooftopBar:
+                        SpawnItemHotelRooftopBar.SpawnItemAtLocation(
+                            itemOwner,                    // Owner of the item
+                            spawnLocationRecipient,        // Recipient used for spawn location reference
+                            rule.ItemToSpawn,
+                            rule.SpawnChance
+                        );
+                        break;
                         
                     case SpawnLocationType.Random:
                         // Check if we have any random locations defined
@@ -481,6 +490,13 @@ namespace MurderItemSpawner
                     {
                         Plugin.Log.LogInfo($"[ConfigManager] Checking city hall bathroom location for {belongsTo.name}");
                         return null; // Just return null, actual spawning will happen in SpawnItemCityHallBathroom
+                    }
+                    return null;
+                case SpawnLocationType.HotelRooftopBar:
+                    if (belongsTo != null)
+                    {
+                        Plugin.Log.LogInfo($"[ConfigManager] Checking hotel rooftop bar location for {belongsTo.name}");
+                        return null; // Just return null, actual spawning will happen in SpawnItemHotelRooftopBar
                     }
                     return null;
                 case SpawnLocationType.Random:

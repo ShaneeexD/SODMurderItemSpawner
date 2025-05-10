@@ -24,15 +24,15 @@ namespace MurderItemSpawner
         }
 
         // Method to spawn an item in a City Hall bathroom
-        public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float spawnChance = 1.0f)
+        public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float SpawnChance)
         {
             try
             {
                 // Check if we should spawn based on chance
                 float randomValue = UnityEngine.Random.Range(0f, 1f);
-                if (randomValue > spawnChance)
+                if (randomValue > SpawnChance)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Skipping spawn of {presetName} due to chance (roll: {randomValue}, needed: <= {spawnChance})");
+                    Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Skipping spawn of {presetName} due to chance (roll: {randomValue}, needed: <= {SpawnChance})");
                     return;
                 }
 
@@ -72,154 +72,124 @@ namespace MurderItemSpawner
         // Method to spawn an item in a City Hall bathroom
         private static Interactable SpawnItemInCityHallBathroom(InteractablePreset itemPreset, Human owner, Human recipient, string itemNameForLog)
         {
-            // Instead of trying to find the City Hall specifically, we'll just pick a random bathroom in any public building
-            // This is more reliable and will work even if the City Hall can't be found
+            // Find bathrooms in the Public bathrooms building
+            List<NewRoom> bathroomRooms = new List<NewRoom>();
             
-            // Get all addresses in the city
-            List<NewAddress> publicBuildings = new List<NewAddress>();
-            
-            // Find all public buildings (non-apartment buildings)
+            // Get all locations in the city
             CityData cityData = CityData.Instance;
-            foreach (var newLoc in cityData.gameLocationDirectory)
+            Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Searching for City Hall bathrooms");
+            
+            // Find the Public bathrooms building
+            NewAddress publicBathrooms = null;
+            
+            foreach (var location in cityData.gameLocationDirectory)
             {
-                if (newLoc.name.Contains("City Hall") || 
-                        newLoc.name.Contains("CityHall") || 
-                        newLoc.name.Contains("Hospital"))
+                if (location == null || location.thisAsAddress == null) continue;
+                
+                // Look specifically for the Public bathrooms building
+                if (location.name != null && location.name.Contains("Public bathrooms"))
                 {
-                    NewAddress address = newLoc.thisAsAddress;
-                    publicBuildings.Add(address);
-                    Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Found public building: {address.name}");
-                }
-            }
-            
-            if (publicBuildings.Count == 0)
-            {
-                Plugin.Log.LogWarning($"[SpawnItemCityHallBathroom] Could not find any public buildings.");
-                return null;
-            }
-            
-            // Choose a random public building, preferring City Hall if available
-            NewAddress selectedBuilding = null;
-            
-            // First try to find City Hall
-            foreach (var building in publicBuildings)
-            {
-                if (building.name.Contains("CityHall") || building.name.Contains("City Hall") || building.name.Contains("Hospital"))
-                {
-                    selectedBuilding = building;
-                    Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Selected City Hall: {building.name}");
+                    publicBathrooms = location.thisAsAddress;
+                    Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Found Public bathrooms building: {publicBathrooms.name}");
                     break;
                 }
             }
             
-            // If City Hall wasn't found, pick a random public building
-            if (selectedBuilding == null)
+            // If we couldn't find the Public bathrooms building, try to find City Hall
+            if (publicBathrooms == null)
             {
-                int randomIndex = UnityEngine.Random.Range(0, publicBuildings.Count);
-                selectedBuilding = publicBuildings[randomIndex];
-                Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Selected random public building: {selectedBuilding.name}");
-            }
-
-            // Find bathroom rooms in the selected building
-            List<NewRoom> bathroomRooms = new List<NewRoom>();
-            List<NewRoom> allRooms = new List<NewRoom>();
-            
-            // Check if the building has a floor
-            if (selectedBuilding.floor != null)
-            {
-                // Get all rooms in the building
-                var il2cppRooms = selectedBuilding.rooms;
-                // Convert Il2CppSystem.Collections.Generic.List to System.Collections.Generic.List
-                if (il2cppRooms != null)
-                {
-                    Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Building {selectedBuilding.name} has {il2cppRooms.Count} rooms");
-                    for (int i = 0; i < il2cppRooms.Count; i++)
-                    {
-                        allRooms.Add(il2cppRooms[i]);
-                    }
-                }
+                Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Public bathrooms building not found, looking for City Hall");
                 
-                // Log all rooms and their presets
-                Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] === LISTING ALL ROOMS IN {selectedBuilding.name} ===");
-                foreach (var room in allRooms)
+                foreach (var location in cityData.gameLocationDirectory)
                 {
-                    string presetName = room.preset != null ? room.preset.name : "null";
-                    Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Room: {room.name}, Preset: {presetName}");
-                }
-                Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] === END OF ROOM LIST ===");
-                
-                foreach (var room in allRooms)
-                {
-                    // Skip rooms that aren't in this building
-                    if (room == null || room.name == null || room.floor != selectedBuilding.floor) continue;
+                    if (location == null || location.thisAsAddress == null) continue;
                     
-                    // Check if this is a public bathroom by checking its preset
-                    string presetName = room.preset != null ? room.preset.name : "null";
-                    
-                    // Log the room we're checking
-                    Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Checking room: {room.name}, Preset: {presetName}");
-                    
-                    if (room.preset != null && room.preset.name != null && 
-                        (room.preset.name.Contains("BathroomFemale") || 
-                         room.preset.name.Contains("BathroomMale") || 
-                         room.preset.name.Contains("Building Bathroom") || 
-                         room.preset.name.Contains("PublicBathroom") || 
-                         room.preset.name.Contains("Bathroom") || 
-                         room.preset.name.Contains("bathroom") || 
-                         room.preset.name.Contains("Toilet") || 
-                         room.preset.name.Contains("toilet") ||
-                         room.preset.name.Contains("WC") ||
-                         room.preset.name.Contains("Restroom")))
+                    if (location.name != null && (location.name.Contains("City Hall") || location.name.Contains("CityHall")))
                     {
-                        Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Found bathroom room: {room.name}");
-                        bathroomRooms.Add(room);
-                    }
-                }
-            }
-
-            // If we couldn't find bathrooms by preset, try finding them by name as a fallback
-            if (bathroomRooms.Count == 0)
-            {
-                Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] No bathroom rooms found by preset, trying by name...");
-                
-                // Try again with all rooms, but check by name
-                foreach (var room in allRooms)
-                {
-                    if (room == null || room.name == null) continue;
-                    
-                    // Check if this is a bathroom by name
-                    if (room.name.ToLower().Contains("bathroom") || 
-                        room.name.ToLower().Contains("restroom") || 
-                        room.name.ToLower().Contains("toilet") ||
-                        room.name.ToLower().Contains("wc") ||
-                        room.name.ToLower().Contains("public bathrooms"))
-                    {
-                        Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Found bathroom room by name: {room.name}");
-                        bathroomRooms.Add(room);
+                        publicBathrooms = location.thisAsAddress;
+                        Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Found City Hall: {publicBathrooms.name}");
+                        break;
                     }
                 }
             }
             
-            // If we still couldn't find any bathrooms, try to find ANY room as a last resort
-            if (bathroomRooms.Count == 0)
+            // If we still couldn't find either building, give up
+            if (publicBathrooms == null)
             {
-                Plugin.Log.LogWarning($"[SpawnItemCityHallBathroom] Could not find any bathroom rooms in the selected building. Using any available room.");
+                Plugin.Log.LogError($"[SpawnItemCityHallBathroom] Could not find Public bathrooms or City Hall.");
+                return null;
+            }
+            
+            // Check if the building has rooms
+            if (publicBathrooms.rooms == null || publicBathrooms.rooms.Count == 0)
+            {
+                Plugin.Log.LogError($"[SpawnItemCityHallBathroom] Building {publicBathrooms.name} has no rooms.");
+                return null;
+            }
+            
+            // Find all bathrooms in the building
+            Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Checking {publicBathrooms.rooms.Count} rooms in {publicBathrooms.name}");
+            
+            for (int i = 0; i < publicBathrooms.rooms.Count; i++)
+            {
+                var room = publicBathrooms.rooms[i];
+                if (room == null) continue;
                 
-                // Just use any room in the building as a last resort
-                if (allRooms.Count > 0)
+                string roomName = room.name != null ? room.name : "unnamed";
+                string presetName = room.preset != null ? room.preset.name : "no preset";
+                string floorName = room.floor != null ? room.floor.name : "unknown floor";
+                
+                // Check if this is a City Hall ground floor bathroom
+                bool isBathroom = false;
+                bool isCorrectFloor = false;
+                
+                // Check if it's the City Hall ground floor
+                if (floorName.Contains("CityHall_GroundFloor"))
                 {
-                    // Pick a random room
-                    int randomIndex = UnityEngine.Random.Range(0, allRooms.Count);
-                    bathroomRooms.Add(allRooms[randomIndex]);
-                    Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Using random room as fallback: {allRooms[randomIndex].name}");
+                    isCorrectFloor = true;
                 }
-                else
+                
+                // Only proceed if it's the correct floor
+                if (isCorrectFloor)
                 {
-                    Plugin.Log.LogError($"[SpawnItemCityHallBathroom] No rooms found in the building at all.");
-                    return null;
+                    // Check by preset
+                    if (room.preset != null && (
+                        presetName.Contains("BuildingBathroomMale") || 
+                        presetName.Contains("BuildingBathroomFemale") ||
+                        presetName.Contains("CorporateCorridoor") ||
+                        IsBathroomByPreset(presetName)))
+                    {
+                        isBathroom = true;
+                    }
+                    // Check by name - include the corridor
+                    else if (roomName.Contains("Public bathrooms") || 
+                             roomName.Contains("Bathroom") || 
+                             roomName.Contains("Corridor"))
+                    {
+                        isBathroom = true;
+                    }
+                }
+                
+                // Log the room
+                Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Room: {roomName}, Preset: {presetName}, Floor: {floorName}, IsBathroom: {isBathroom}, IsCorrectFloor: {isCorrectFloor}");
+                
+                // Add bathrooms to our list
+                if (isBathroom)
+                {
+                    bathroomRooms.Add(room);
                 }
             }
-
+            
+            // Log summary
+            Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Found {bathroomRooms.Count} bathroom rooms in {publicBathrooms.name}");
+            
+            // If we couldn't find any bathrooms, give up
+            if (bathroomRooms.Count == 0)
+            {
+                Plugin.Log.LogError($"[SpawnItemCityHallBathroom] No bathroom rooms found in {publicBathrooms.name}.");
+                return null;
+            }
+            
             // Choose a random bathroom room
             int randomRoomIndex = UnityEngine.Random.Range(0, bathroomRooms.Count);
             NewRoom selectedRoom = bathroomRooms[randomRoomIndex];
@@ -229,7 +199,7 @@ namespace MurderItemSpawner
             // Find a node in the bathroom room
             NewNode placementNode = null;
             Vector3 spawnPosition = Vector3.zero;
-                
+            
             // Get a node from the room
             if (selectedRoom.nodes != null && selectedRoom.nodes.Count > 0)
             {
@@ -261,7 +231,7 @@ namespace MurderItemSpawner
             }
             
             // Add a small offset to ensure it's visible
-            spawnPosition.y += 0.05f;
+            spawnPosition.y += 0.00f;
             
             // Add some randomization to the position
             spawnPosition.x += UnityEngine.Random.Range(-0.1f, 0.1f);
@@ -326,6 +296,22 @@ namespace MurderItemSpawner
                 Plugin.Log.LogError($"[SpawnItemCityHallBathroom] Stack trace: {ex.StackTrace}");
                 return null;
             }
+        }
+        
+        // Helper method to check if a preset name indicates a bathroom
+        private static bool IsBathroomByPreset(string presetName)
+        {
+            if (string.IsNullOrEmpty(presetName)) return false;
+            
+            string lowerName = presetName.ToLower();
+            return lowerName.Contains("bathroom") || 
+                   lowerName.Contains("bathroomfemale") || 
+                   lowerName.Contains("bathroommale") || 
+                   lowerName.Contains("building bathroom") || 
+                   lowerName.Contains("publicbathroom") || 
+                   lowerName.Contains("toilet") || 
+                   lowerName.Contains("wc") || 
+                   lowerName.Contains("restroom");
         }
     }
 }
