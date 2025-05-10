@@ -44,15 +44,26 @@ namespace MurderItemSpawner
                     return;
                 }
 
-                // Get the owner's workplace address (where to spawn the item)
-                if (owner == null || owner.job == null || owner.job.employer == null || owner.job.employer.placeOfBusiness == null || owner.job.employer.placeOfBusiness.thisAsAddress == null)
+                // Get the recipient's workplace address (where to spawn the item)
+                if (recipient == null)
                 {
-                    Plugin.Log.LogWarning($"[SpawnItemBuildingEntranceWorkplace] Owner has no valid workplace address. Cannot spawn {presetName}");
+                    Plugin.Log.LogWarning($"[SpawnItemBuildingEntranceWorkplace] Recipient is null. Cannot spawn {presetName}");
+                    return;
+                }
+                
+                // Check if recipient has a job with a valid workplace address
+                if (recipient.job == null || recipient.job.employer == null || recipient.job.employer.address == null)
+                {
+                    // Fallback to home entrance if workplace is not available
+                    Plugin.Log.LogInfo($"[SpawnItemBuildingEntranceWorkplace] Recipient {recipient.name} has no valid workplace. Falling back to home building entrance.");
+                    
+                    // Call the home building entrance spawner instead
+                    SpawnItemBuildingEntranceHome.SpawnItemAtLocation(owner, recipient, presetName, spawnChance, subLocationTypeBuildingEntrances);
                     return;
                 }
 
-                NewAddress workplaceAddress = recipient.job.employer.placeOfBusiness.thisAsAddress;
-                Plugin.Log.LogInfo($"[SpawnItemBuildingEntranceWorkplace] Owner: {owner.name}, Workplace: {workplaceAddress.name}");
+                NewAddress workplaceAddress = recipient.job.employer.address;
+                Plugin.Log.LogInfo($"[SpawnItemBuildingEntranceWorkplace] Owner: {owner.name}, Recipient: {recipient.name}, Workplace: {workplaceAddress.name}");
 
                 // Find the building entrance and spawn the item
                 Interactable spawnedItem = SpawnItemAtBuildingEntrance(workplaceAddress, interactablePresetItem, owner, recipient, presetName, spawnChance, subLocationTypeBuildingEntrances);
@@ -292,7 +303,7 @@ namespace MurderItemSpawner
                 spawnPosition = entrancePosition + (wallDirection * offsetDistance);
                 spawnPosition.y += 0.05f;
                 spawnPosition.z += UnityEngine.Random.Range(-0.5f, 0.5f);
-                spawnPosition.x += UnityEngine.Random.Range(-0.5f, 0.5f);
+                spawnPosition.x += UnityEngine.Random.Range(-0.5f, 0.3f);
             }
             
             Plugin.Log.LogInfo($"[SpawnItemBuildingEntranceWorkplace] Entrance position: {entrancePosition}, Wall direction: {wallDirection}");

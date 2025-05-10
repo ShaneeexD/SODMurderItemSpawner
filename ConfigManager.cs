@@ -279,16 +279,45 @@ namespace MurderItemSpawner
                             rule.SubLocationTypeBuildingEntrances
                         );
                         break;
-
+                        
                     case SpawnLocationType.Random:
-                       
+                        // Check if we have any random locations defined
+                        if (rule.RandomSpawnLocations == null || rule.RandomSpawnLocations.Count == 0)
+                        {
+                            Plugin.Log.LogWarning($"[ConfigManager] Random spawn location selected but no RandomSpawnLocations defined in rule '{rule.Name}'");
+                            return;
+                        }
+                        
+                        // Choose a random location from the pool
+                        int randomIndex = UnityEngine.Random.Range(0, rule.RandomSpawnLocations.Count);
+                        string randomLocationName = rule.RandomSpawnLocations[randomIndex];
+                        
+                        // Try to parse the location name to a SpawnLocationType
+                        if (!Enum.TryParse(randomLocationName, out SpawnLocationType randomLocationType))
+                        {
+                            Plugin.Log.LogWarning($"[ConfigManager] Invalid random location name '{randomLocationName}' in rule '{rule.Name}'");
+                            return;
+                        }
+                        
+                        Plugin.Log.LogInfo($"[ConfigManager] Randomly selected location: {randomLocationType} for rule '{rule.Name}'");
+                        
+                        // Create a copy of the rule with the randomly selected location
+                        SpawnRule randomRule = new SpawnRule
+                        {
+                            Name = rule.Name + "_Random",
+                            ItemToSpawn = rule.ItemToSpawn,
+                            BelongsTo = rule.BelongsTo,
+                            Recipient = rule.Recipient,
+                            SpawnLocation = randomLocationType,
+                            SpawnChance = rule.SpawnChance,
+                            UnlockMailbox = rule.UnlockMailbox,
+                            SubLocationTypeBuildingEntrances = rule.SubLocationTypeBuildingEntrances
+                        };
+                        
+                        // Recursively call SpawnItem with the new rule
+                        SpawnItem(randomRule);
                         break;
-                        
-                    // Add cases for other location types here in the future
-                    // case SpawnLocationType.Floor:
-                    //    SpawnItemFloor.SpawnItemAtLocation(...);
-                    //    break;
-                        
+                    
                     default:
                         // Default to mailbox spawner for now
                         Plugin.Log.LogInfo($"Using mailbox spawner for location type: {rule.SpawnLocation} (will be implemented in the future)");

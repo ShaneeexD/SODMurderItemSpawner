@@ -290,7 +290,7 @@ namespace MurderItemSpawner
                 spawnPosition = entrancePosition + (wallDirection * offsetDistance);
                 spawnPosition.y += 0.05f;
                 spawnPosition.z += UnityEngine.Random.Range(-0.5f, 0.5f);
-                spawnPosition.x += UnityEngine.Random.Range(-0.5f, 0.5f);
+                spawnPosition.x += UnityEngine.Random.Range(-0.5f, 0.3f);
             }
             
             // Add a small height offset to ensure it's not on the ground
