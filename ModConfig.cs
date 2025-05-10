@@ -102,8 +102,10 @@ namespace MurderItemSpawner
         Mailbox,
         Doormat,
         HomeLobby,
+        WorkplaceLobby,
         HomeBuildingEntrance,
         WorkplaceBuildingEntrance,
+        CityHallBathroom,
         Random,
     }
 

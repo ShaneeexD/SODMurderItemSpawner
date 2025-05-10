@@ -260,6 +260,16 @@ namespace MurderItemSpawner
                         );
                         break;
 
+                    case SpawnLocationType.WorkplaceLobby:
+                        // Use the lobby spawner for lobby locations
+                        SpawnItemLobbyWork.SpawnItemAtLocation(
+                            itemOwner,                    // Owner of the item
+                            spawnLocationRecipient,        // Recipient used for spawn location reference
+                            rule.ItemToSpawn,
+                            rule.SpawnChance
+                        );
+                        break;
+
                     case SpawnLocationType.HomeBuildingEntrance:
                         SpawnItemBuildingEntranceHome.SpawnItemAtLocation(
                             itemOwner,                    // Owner of the item
@@ -317,6 +327,15 @@ namespace MurderItemSpawner
                         // Recursively call SpawnItem with the new rule
                         SpawnItem(randomRule);
                         break;
+
+                        case SpawnLocationType.CityHallBathroom:
+                            SpawnItemCityHallBathroom.SpawnItemAtLocation(
+                                itemOwner,
+                                spawnLocationRecipient,
+                                rule.ItemToSpawn,
+                                rule.SpawnChance
+                            );
+                            break;
                     
                     default:
                         // Default to mailbox spawner for now
@@ -457,7 +476,13 @@ namespace MurderItemSpawner
                         return null; // Just return null, actual spawning will happen in SpawnItem
                     }
                     return null;
-                
+                case SpawnLocationType.CityHallBathroom:
+                    if (belongsTo != null)
+                    {
+                        Plugin.Log.LogInfo($"[ConfigManager] Checking city hall bathroom location for {belongsTo.name}");
+                        return null; // Just return null, actual spawning will happen in SpawnItemCityHallBathroom
+                    }
+                    return null;
                 case SpawnLocationType.Random:
                     
                     return null;

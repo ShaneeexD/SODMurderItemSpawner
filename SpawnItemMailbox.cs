@@ -91,7 +91,6 @@ namespace MurderItemSpawner
 
                 // Get the mailbox for placement
                 Interactable targetMailbox = Toolbox.Instance.GetMailbox(recipient);
-                
                 // Create the item
                 Interactable spawnedItem = null;
                 try
