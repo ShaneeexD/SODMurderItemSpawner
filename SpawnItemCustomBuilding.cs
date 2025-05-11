@@ -25,7 +25,7 @@ namespace MurderItemSpawner
 
         // Method to spawn an item in a custom building and room
         public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float spawnChance, 
-            string targetRoomName, string buildingPreset = null, List<string> customFloorNames = null)
+            string targetRoomName = null, string buildingPreset = null, List<string> customFloorNames = null)
         {
             try
             {
@@ -84,9 +84,58 @@ namespace MurderItemSpawner
             }
         }
 
+        // Helper method for smart matching that allows partial matches for common terms
+        // but requires more precise matching for specific identifiers
+        private static bool IsWordBoundaryMatch(string source, string target)
+        {
+            if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(target))
+                return false;
+                
+            // Convert both strings to lowercase for case-insensitive comparison
+            string sourceLower = source.ToLower();
+            string targetLower = target.ToLower();
+            
+            // First check if they're exactly equal
+            if (sourceLower == targetLower)
+                return true;
+                
+            // List of common terms that can use partial matching
+            string[] commonTerms = new string[] { 
+                "basement", "ground", "floor", "bathroom", "power", "room", "lobby", 
+                "kitchen", "office", "bedroom", "living", "dining", "hotel", "apartment", "bar" 
+            };
+            
+            // If the target is a common term, allow partial matching
+            foreach (string term in commonTerms)
+            {
+                if (targetLower == term && sourceLower.Contains(term))
+                    return true;
+            }
+            
+            // For specific identifiers (containing separators like underscore),
+            // use more precise matching
+            if (targetLower.Contains("_") || targetLower.Contains(" ") || targetLower.Contains("-"))
+            {
+                // For compound terms like "CityHall_Top", require the whole string to match
+                return sourceLower.Contains(targetLower);
+            }
+            
+            // For other cases, check if source contains target as a whole word
+            char[] separators = new char[] { ' ', '_', '-', '.', '/', '\\' };
+            string[] words = sourceLower.Split(separators, StringSplitOptions.RemoveEmptyEntries);
+            
+            foreach (string word in words)
+            {
+                if (word == targetLower)
+                    return true;
+            }
+            
+            return false;
+        }
+        
         // Method to spawn an item in a custom building with specific room name
         private static Interactable SpawnItemInCustomBuilding(InteractablePreset itemPreset, Human owner, Human recipient, 
-            string itemNameForLog, string targetRoomName, string buildingPreset = null, List<string> customFloorNames = null)
+            string itemNameForLog, string targetRoomName = null, string buildingPreset = null, List<string> customFloorNames = null)
         {
             // Find rooms in buildings with the specified preset
             List<NewRoom> matchingRooms = new List<NewRoom>();
@@ -109,27 +158,43 @@ namespace MurderItemSpawner
                 bool isBuildingMatch = false;
                 string buildingPresetName = "unknown";
                 
-                // If no building preset is specified, match any building
                 if (buildingPreset == null)
                 {
                     isBuildingMatch = true;
                     Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ ANY BUILDING: Checking rooms in '{location.name}'");
                 }
-                // Otherwise check if the location name contains the building preset
-                else if (location.name != null && location.name.Contains(buildingPreset, StringComparison.OrdinalIgnoreCase))
+                // Otherwise check if the location name matches the building preset
+                else if (location.name != null)
                 {
-                    isBuildingMatch = true;
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ BUILDING NAME MATCH: Found building with name '{location.name}' containing '{buildingPreset}'");
+                    // First try exact match
+                    if (location.name.Equals(buildingPreset, StringComparison.OrdinalIgnoreCase))
+                    {
+                        isBuildingMatch = true;
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ EXACT BUILDING NAME MATCH: Found building with name '{location.name}' exactly matching '{buildingPreset}'");
+                    }
+                    // Then try word boundary matching
+                    else if (IsWordBoundaryMatch(location.name, buildingPreset))
+                    {
+                        isBuildingMatch = true;
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ BUILDING NAME WORD MATCH: Found building with name '{location.name}' containing whole word '{buildingPreset}'");
+                    }
                 }
-                // Then check if the building preset contains the specified preset
+                // Then check if the building preset matches
                 else if (building.preset != null && building.preset.name != null)
                 {
                     buildingPresetName = building.preset.name;
                     
-                    if (buildingPresetName.Contains(buildingPreset, StringComparison.OrdinalIgnoreCase))
+                    // First try exact match
+                    if (buildingPresetName.Equals(buildingPreset, StringComparison.OrdinalIgnoreCase))
                     {
                         isBuildingMatch = true;
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ BUILDING PRESET MATCH: Found building '{location.name}', Preset: '{buildingPresetName}' contains '{buildingPreset}'");
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ EXACT BUILDING PRESET MATCH: Found building '{location.name}', Preset: '{buildingPresetName}' exactly matching '{buildingPreset}'");
+                    }
+                    // Then try word boundary matching
+                    else if (IsWordBoundaryMatch(buildingPresetName, buildingPreset))
+                    {
+                        isBuildingMatch = true;
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ BUILDING PRESET WORD MATCH: Found building '{location.name}', Preset: '{buildingPresetName}' containing whole word '{buildingPreset}'");
                     }
                 }
                 
@@ -155,38 +220,72 @@ namespace MurderItemSpawner
                     string buildingName = building.name != null ? building.name : "unknown building";
                     
                     bool isRoomMatch = false;
-                    bool isFloorMatch = true; // Default to true if no floor names are specified
+                    bool isFloorMatch = false; // Default to true if no floor names are specified
                     
-                    // Check if we need to filter by floor name
-                    if (customFloorNames != null && customFloorNames.Count > 0)
+                    // Check if the floor matches any of the custom floor names
+                    if (customFloorNames == null || customFloorNames.Count == 0)
                     {
-                        isFloorMatch = false; // Start with false when we have floor names to check
-                        
-                        // Log the floor name we're checking
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Floor check - Room: {roomName}, Actual Floor: '{floorName}', Looking for floors: '{string.Join(", ", customFloorNames)}'");
-                        
-                        // Check if this room's floor matches any of the specified floor names
+                        // If no custom floor names are provided, match any floor
+                        isFloorMatch = true;
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ ANY FLOOR: Using floor '{floorName}' (no specific floor requested)");
+                    }
+                    else
+                    {
                         foreach (string customFloorName in customFloorNames)
                         {
-                            // Use Contains instead of Equals for more flexible matching
-                            if (floorName.Contains(customFloorName, StringComparison.OrdinalIgnoreCase))
+                            // Check if the custom floor name has any capital letters
+                            bool hasCapitalLetters = customFloorName.Any(char.IsUpper);
+                            
+                            if (hasCapitalLetters)
+                            {
+                                // For names with capital letters, require EXACT match (not case-sensitive)
+                                // This handles cases like "CityHall_Top" vs "CityHall_Top (Floor 4)"
+                                if (floorName.Contains(customFloorName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    isFloorMatch = true;
+                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ CAPITAL LETTER MATCH: '{floorName}' contains '{customFloorName}' (case insensitive)");
+                                    break;
+                                }
+                                else
+                                {
+                                    // Log that we're NOT matching this floor
+                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ NO CAPITAL MATCH: Floor '{floorName}' does not contain '{customFloorName}'");
+                                    // Important: Do NOT set isFloorMatch to false here, as we need to check all floor names
+                                }
+                            }
+                            // For lowercase terms like "basement", allow partial matching
+                            else if (floorName.Contains(customFloorName, StringComparison.OrdinalIgnoreCase))
                             {
                                 isFloorMatch = true;
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ FLOOR MATCH: '{floorName}' contains '{customFloorName}'");
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ LOWERCASE MATCH: '{floorName}' contains '{customFloorName}'");
                                 break;
                             }
                         }
                     }
                     
                     // Simple dynamic room matching using only location names
-                    // Log the room name for debugging
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Room check - Room name: {roomName}, Looking for: '{targetRoomName}'");
-                    
-                    // Check if the room name contains the target name (case insensitive)
-                    if (roomName.Contains(targetRoomName, StringComparison.OrdinalIgnoreCase))
+                    if (targetRoomName == null)
                     {
+                        // If no target room name is specified, match any room
                         isRoomMatch = true;
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ ROOM MATCH: Room name '{roomName}' contains '{targetRoomName}'");
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ ANY ROOM: Using room '{roomName}' (no specific room requested)");
+                    }
+                    else
+                    {
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Room check - Room name: {roomName}, Looking for: '{targetRoomName}'");
+                        
+                        // First try exact match
+                        if (roomName.Equals(targetRoomName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            isRoomMatch = true;
+                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ EXACT ROOM MATCH: Room name '{roomName}' equals '{targetRoomName}'");
+                        }
+                        // Then try word boundary matching to avoid partial matches
+                        else if (IsWordBoundaryMatch(roomName, targetRoomName))
+                        {
+                            isRoomMatch = true;
+                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ ROOM WORD MATCH: Room name '{roomName}' contains whole word '{targetRoomName}'");
+                        }
                     }
                     
                     // Log the room

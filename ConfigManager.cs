@@ -348,20 +348,14 @@ namespace MurderItemSpawner
                             break;
                             
                         case SpawnLocationType.Custom:
-                            // Check if we have the required room name (building preset is now optional)
-                            if (string.IsNullOrEmpty(rule.CustomRoomName))
-                            {
-                                Plugin.Log.LogWarning($"[ConfigManager] Custom spawn location selected but no CustomRoomName defined in rule '{rule.Name}'");
-                                return;
-                            }
-                            
+                            // All parameters are now optional - we can spawn in any building, any room, any floor
                             SpawnItemCustomBuilding.SpawnItemAtLocation(
                                 itemOwner,                    // Owner of the item
                                 spawnLocationRecipient,        // Recipient used for spawn location reference
                                 rule.ItemToSpawn,
                                 rule.SpawnChance,
-                                rule.CustomRoomName,           // Room name is now the required parameter
                                 rule.CustomBuildingPreset,     // Building preset is now optional
+                                rule.CustomRoomName,           // Room name is now optional
                                 rule.CustomFloorNames
                             );
                             break;
