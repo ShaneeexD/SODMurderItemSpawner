@@ -346,22 +346,41 @@ namespace MurderItemSpawner
                                 rule.SpawnChance
                             );
                             break;
-                    
-                    default:
-                        // Default to mailbox spawner for now
-                        Plugin.Log.LogInfo($"Using mailbox spawner for location type: {rule.SpawnLocation} (will be implemented in the future)");
-                        if (spawnLocation != null)
-                        {
-                            SpawnItemMailbox.SpawnItemAtLocation(
+                            
+                        case SpawnLocationType.Custom:
+                            // Check if we have the required room name (building preset is now optional)
+                            if (string.IsNullOrEmpty(rule.CustomRoomName))
+                            {
+                                Plugin.Log.LogWarning($"[ConfigManager] Custom spawn location selected but no CustomRoomName defined in rule '{rule.Name}'");
+                                return;
+                            }
+                            
+                            SpawnItemCustomBuilding.SpawnItemAtLocation(
                                 itemOwner,                    // Owner of the item
                                 spawnLocationRecipient,        // Recipient used for spawn location reference
-                                spawnLocation,
                                 rule.ItemToSpawn,
-                                rule.UnlockMailbox,
-                                rule.SpawnChance
+                                rule.SpawnChance,
+                                rule.CustomRoomName,           // Room name is now the required parameter
+                                rule.CustomBuildingPreset,     // Building preset is now optional
+                                rule.CustomFloorNames
                             );
-                        }
-                        break;
+                            break;
+                            
+                        default:
+                            // Default to mailbox spawner for now
+                            Plugin.Log.LogInfo($"Using mailbox spawner for location type: {rule.SpawnLocation} (will be implemented in the future)");
+                            if (spawnLocation != null)
+                            {
+                                SpawnItemMailbox.SpawnItemAtLocation(
+                                    itemOwner,                    // Owner of the item
+                                    spawnLocationRecipient,        // Recipient used for spawn location reference
+                                    spawnLocation,
+                                    rule.ItemToSpawn,
+                                    rule.UnlockMailbox,
+                                    rule.SpawnChance
+                                );
+                            }
+                            break;
                 }
             }
             catch (Exception ex)

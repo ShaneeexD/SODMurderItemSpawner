@@ -34,6 +34,33 @@ namespace MurderItemSpawner
         }
     }
 
+    [HarmonyPatch(typeof(MurderController), "PickNewVictim")]
+    public class PickNewVictimPatch
+    {
+        // This method will be called when a new victim is picked
+        public static void Postfix()
+        {
+            try
+            {
+                // Get the current murder type
+                string murderType = "";
+                if (MurderController.Instance != null && MurderController.Instance.chosenMO != null)
+                {
+                    murderType = MurderController.Instance.chosenMO.name;
+                }
+
+                Plugin.Log.LogInfo($"Murder detected! Type: {murderType}");
+                
+                // Check if any rules should be triggered for this event
+                ConfigManager.Instance.CheckRulesForEvent("PickNewVictim", murderType);
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.LogError($"Error in PickNewVictimPatch: {ex.Message}");
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(MurderController), "OnVictimDiscovery")]
     public class OnVictimDiscoveryPatch
     {
@@ -60,6 +87,7 @@ namespace MurderItemSpawner
             }
         }
     }
+
 
     [HarmonyPatch(typeof(MurderController), "TriggerCoverUpTelephoneCall")]
     public class TriggerCoverUpTelephoneCallPatch

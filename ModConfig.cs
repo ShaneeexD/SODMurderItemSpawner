@@ -168,6 +168,9 @@ namespace MurderItemSpawner
         public SubLocationTypeBuildingEntrances SubLocationTypeBuildingEntrances { get; set; } = SubLocationTypeBuildingEntrances.Inside;
         public List<string> RandomSpawnLocations { get; set; } = new List<string>();
         public List<string> HotelRooftopBarSubLocations { get; set; } = new List<string>();
+        public string CustomBuildingPreset { get; set; } = "";
+        public string CustomRoomName { get; set; } = "";
+        public List<string> CustomFloorNames { get; set; } = new List<string>();
 
     }
 }
