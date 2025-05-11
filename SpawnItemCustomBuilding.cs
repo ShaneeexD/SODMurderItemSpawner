@@ -25,7 +25,7 @@ namespace MurderItemSpawner
 
         // Method to spawn an item in a custom building and room
         public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float spawnChance, 
-            string targetRoomName = null, string buildingPreset = null, List<string> customFloorNames = null)
+            string targetRoomName = null, string buildingPreset = null, List<string> customFloorNames = null, string customSubRoomName = null)
         {
             try
             {
@@ -63,9 +63,14 @@ namespace MurderItemSpawner
                 {
                     Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] No specific floor names provided, checking all floors");
                 }
+                
+                if (customSubRoomName != null)
+                {
+                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for sub-room with name: {customSubRoomName}");
+                }
 
                 // Find the custom building and spawn the item
-                Interactable spawnedItem = SpawnItemInCustomBuilding(interactablePresetItem, owner, recipient, presetName, targetRoomName, buildingPreset, customFloorNames);
+                Interactable spawnedItem = SpawnItemInCustomBuilding(interactablePresetItem, owner, recipient, presetName, targetRoomName, buildingPreset, customFloorNames, customSubRoomName);
                 
                 if (spawnedItem != null)
                 {
@@ -135,7 +140,7 @@ namespace MurderItemSpawner
         
         // Method to spawn an item in a custom building with specific room name
         private static Interactable SpawnItemInCustomBuilding(InteractablePreset itemPreset, Human owner, Human recipient, 
-            string itemNameForLog, string targetRoomName = null, string buildingPreset = null, List<string> customFloorNames = null)
+            string itemNameForLog, string targetRoomName = null, string buildingPreset = null, List<string> customFloorNames = null, string customSubRoomName = null)
         {
             // Find rooms in buildings with the specified preset
             List<NewRoom> matchingRooms = new List<NewRoom>();
@@ -325,8 +330,103 @@ namespace MurderItemSpawner
             // Choose a random matching room
             int randomRoomIndex = UnityEngine.Random.Range(0, matchingRooms.Count);
             NewRoom selectedRoom = matchingRooms[randomRoomIndex];
-            
             Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Selected room: {selectedRoom.name}");
+            
+            // Check if we need to find a sub-room
+            if (!string.IsNullOrEmpty(customSubRoomName))
+            {
+                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for sub-room: {customSubRoomName}");
+                
+                // Get the location name prefix to find related rooms
+                string locationPrefix = "";
+                
+                // Try to get the company name first
+                if (selectedRoom.gameLocation != null && 
+                    selectedRoom.gameLocation.thisAsAddress != null && 
+                    selectedRoom.gameLocation.thisAsAddress.company != null && 
+                    !string.IsNullOrEmpty(selectedRoom.gameLocation.thisAsAddress.company.name))
+                {
+                    locationPrefix = selectedRoom.gameLocation.thisAsAddress.company.name;
+                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Using company name as prefix: {locationPrefix}");
+                }
+                // If no company name, try to extract a prefix from the room name
+                else if (!string.IsNullOrEmpty(selectedRoom.name))
+                {
+                    // Try to extract the prefix (everything before the last space)
+                    int lastSpaceIndex = selectedRoom.name.LastIndexOf(' ');
+                    if (lastSpaceIndex > 0)
+                    {
+                        locationPrefix = selectedRoom.name.Substring(0, lastSpaceIndex);
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Extracted prefix from room name: {locationPrefix}");
+                    }
+                }
+                
+                if (!string.IsNullOrEmpty(locationPrefix))
+                {
+                    // Find all rooms in the same building
+                    List<NewRoom> subRooms = new List<NewRoom>();
+                    
+                    // Get the building
+                    NewAddress building = selectedRoom.gameLocation?.thisAsAddress;
+                    if (building != null && building.rooms != null)
+                    {
+                        // Check all rooms in this building
+                        foreach (var room in building.rooms)
+                        {
+                            if (room == null || string.IsNullOrEmpty(room.name)) continue;
+                            
+                            // Check if this room matches our sub-room criteria
+                            bool hasCapitalLetters = customSubRoomName.Any(char.IsUpper);
+                            bool isMatch = false;
+                            
+                            // For names with capital letters, use more precise matching
+                            if (hasCapitalLetters)
+                            {
+                                if (room.name.Contains(customSubRoomName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    isMatch = true;
+                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM CAPITAL MATCH: Found sub-room '{room.name}' containing '{customSubRoomName}'");
+                                }
+                            }
+                            // For lowercase names, use more flexible matching
+                            else if (room.name.Contains(customSubRoomName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                isMatch = true;
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM LOWERCASE MATCH: Found sub-room '{room.name}' containing '{customSubRoomName}'");
+                            }
+                            
+                            // Also check if the room name contains both the location prefix and the sub-room name
+                            if (!isMatch && room.name.Contains(locationPrefix, StringComparison.OrdinalIgnoreCase) && 
+                                room.name.Contains(customSubRoomName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                isMatch = true;
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM PREFIX MATCH: Found sub-room '{room.name}' containing both prefix '{locationPrefix}' and '{customSubRoomName}'");
+                            }
+                            
+                            if (isMatch)
+                            {
+                                subRooms.Add(room);
+                            }
+                        }
+                        
+                        // If we found matching sub-rooms, use one of them instead
+                        if (subRooms.Count > 0)
+                        {
+                            int randomSubRoomIndex = UnityEngine.Random.Range(0, subRooms.Count);
+                            selectedRoom = subRooms[randomSubRoomIndex];
+                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Selected sub-room: {selectedRoom.name}");
+                        }
+                        else
+                        {
+                            Plugin.Log.LogWarning($"[SpawnItemCustomBuilding] No matching sub-rooms found for '{customSubRoomName}' in building with prefix '{locationPrefix}'. Using original room instead.");
+                        }
+                    }
+                }
+                else
+                {
+                    Plugin.Log.LogWarning($"[SpawnItemCustomBuilding] Could not determine location prefix for sub-room matching. Using original room instead.");
+                }
+            }
             
             // Find a node in the selected room
             NewNode placementNode = null;
@@ -361,7 +461,6 @@ namespace MurderItemSpawner
                 Plugin.Log.LogWarning($"[SpawnItemCustomBuilding] No nodes found in selected room.");
                 return null;
             }
-            
             // Add a small offset to ensure it's visible
             spawnPosition.y += 0.00f;
             
@@ -407,7 +506,7 @@ namespace MurderItemSpawner
                 {
                     // Set the node to the placement node
                     spawnedItem.node = placementNode;
-                    
+
                     // Update the item's position and node
                     spawnedItem.UpdateWorldPositionAndNode(true, true);
                     
