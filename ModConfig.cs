@@ -109,6 +109,7 @@ namespace MurderItemSpawner
         CityHallBathroom,
         HotelRooftopBar,
         Random,
+        Custom
     }
 
     public enum SubLocationTypeBuildingEntrances
