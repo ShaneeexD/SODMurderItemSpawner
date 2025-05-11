@@ -31,7 +31,8 @@ namespace MurderItemSpawner
                 SpawnChance = 1f,
                 UnlockMailbox = true,
                 SubLocationTypeBuildingEntrances = SubLocationTypeBuildingEntrances.Inside,
-                RandomSpawnLocations = new List<string> { "Doormat", "Lobby", "BuildingEntrance", "WorkplaceBuildingEntrance" }
+                RandomSpawnLocations = new List<string> { "Doormat", "Lobby", "BuildingEntrance", "WorkplaceBuildingEntrance" },
+                HotelRooftopBarSubLocations = new List<string> { "RooftopBar", "BarDiningRoom" }
             });
         }
 
@@ -165,6 +166,7 @@ namespace MurderItemSpawner
         public bool UnlockMailbox { get; set; } = true;
         public SubLocationTypeBuildingEntrances SubLocationTypeBuildingEntrances { get; set; } = SubLocationTypeBuildingEntrances.Inside;
         public List<string> RandomSpawnLocations { get; set; } = new List<string>();
+        public List<string> HotelRooftopBarSubLocations { get; set; } = new List<string>();
 
     }
 }

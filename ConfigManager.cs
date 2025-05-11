@@ -295,7 +295,8 @@ namespace MurderItemSpawner
                             itemOwner,                    // Owner of the item
                             spawnLocationRecipient,        // Recipient used for spawn location reference
                             rule.ItemToSpawn,
-                            rule.SpawnChance
+                            rule.SpawnChance,
+                            rule.HotelRooftopBarSubLocations
                         );
                         break;
                         

@@ -24,7 +24,7 @@ namespace MurderItemSpawner
         }
 
         // Method to spawn an item in a City Hall bathroom
-        public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float SpawnChance)
+        public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float SpawnChance, List<string> HotelRooftopBarSubLocations)
         {
             try
             {
@@ -47,7 +47,7 @@ namespace MurderItemSpawner
                 Plugin.Log.LogInfo($"[SpawnItemHotelRooftopBar] Owner: {owner.name}, Recipient: {recipient.name}");
 
                 // Find the City Hall and spawn the item
-                Interactable spawnedItem = SpawnItemInHotelRooftopBar(interactablePresetItem, owner, recipient, presetName);
+                Interactable spawnedItem = SpawnItemInHotelRooftopBar(interactablePresetItem, owner, recipient, presetName, HotelRooftopBarSubLocations);
                 
                 if (spawnedItem != null)
                 {
@@ -70,7 +70,7 @@ namespace MurderItemSpawner
         }
 
         // Method to spawn an item in a Hotel Rooftop Bar
-        private static Interactable SpawnItemInHotelRooftopBar(InteractablePreset itemPreset, Human owner, Human recipient, string itemNameForLog)
+        private static Interactable SpawnItemInHotelRooftopBar(InteractablePreset itemPreset, Human owner, Human recipient, string itemNameForLog, List<string> HotelRooftopBarSubLocations)
         {
             // Find bathrooms in the Public bathrooms building
             List<NewRoom> rooftopBarRooms = new List<NewRoom>();
@@ -103,10 +103,11 @@ namespace MurderItemSpawner
                     
                     bool isRooftopBar = false;
                     
-                    // Only use rooms with RooftopBar or BarDiningRoom presets
-                    if (room.preset != null && (
-                        presetName.Equals("RooftopBar") || 
-                        presetName.Equals("BarDiningRoom")))
+                    // Use the custom presets passed from the config
+                    List<string> customPresets = HotelRooftopBarSubLocations;
+                    
+                    // Check if this room's preset matches our criteria
+                    if (room.preset != null && IsRooftopBarByPreset(presetName, customPresets))
                     {
                         isRooftopBar = true;
                     }
@@ -242,13 +243,17 @@ namespace MurderItemSpawner
         }
         
         // Helper method to check if a preset name indicates a Rooftop Bar
-        private static bool IsRooftopBarByPreset(string presetName)
+        private static bool IsRooftopBarByPreset(string presetName, List<string> customPresets)
         {
-            if (string.IsNullOrEmpty(presetName)) return false;
+            // First check if we have custom presets defined
+            if (customPresets != null && customPresets.Count > 0)
+            {
+                // Check if the preset name is in our custom list
+                return customPresets.Contains(presetName);
+            }
             
-            string lowerName = presetName.ToLower();
-            return lowerName.Contains("rooftopbar") || 
-                   lowerName.Contains("rooftop bar");
+            // Default presets if no custom ones are defined
+            return presetName == "RooftopBar" || presetName == "BarDiningRoom";
         }
     }
 }
