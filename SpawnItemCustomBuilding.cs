@@ -274,17 +274,29 @@ namespace MurderItemSpawner
                     {
                         Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Room check - Room name: {roomName}, Looking for: '{targetRoomName}'");
                         
-                        // First try exact match
-                        if (roomName.Equals(targetRoomName, StringComparison.OrdinalIgnoreCase))
+                        // Check if the target room name has any capital letters
+                        bool hasCapitalLetters = targetRoomName.Any(char.IsUpper);
+                        
+                        if (hasCapitalLetters)
                         {
-                            isRoomMatch = true;
-                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ EXACT ROOM MATCH: Room name '{roomName}' equals '{targetRoomName}'");
+                            // For names with capital letters, require EXACT match (not case-sensitive)
+                            // This handles cases like "Bathroom" vs "Bathroom (Stall 2)"
+                            if (roomName.Contains(targetRoomName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                isRoomMatch = true;
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ CAPITAL LETTER ROOM MATCH: '{roomName}' contains '{targetRoomName}' (case insensitive)");
+                            }
+                            else
+                            {
+                                // Log that we're NOT matching this room
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ NO CAPITAL ROOM MATCH: Room '{roomName}' does not contain '{targetRoomName}'");
+                            }
                         }
-                        // Then try word boundary matching to avoid partial matches
-                        else if (IsWordBoundaryMatch(roomName, targetRoomName))
+                        // For lowercase terms like "bathroom", allow partial matching
+                        else if (roomName.Contains(targetRoomName, StringComparison.OrdinalIgnoreCase))
                         {
                             isRoomMatch = true;
-                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ ROOM WORD MATCH: Room name '{roomName}' contains whole word '{targetRoomName}'");
+                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ LOWERCASE ROOM MATCH: '{roomName}' contains '{targetRoomName}'");
                         }
                     }
                     

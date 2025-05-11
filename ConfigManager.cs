@@ -354,8 +354,8 @@ namespace MurderItemSpawner
                                 spawnLocationRecipient,        // Recipient used for spawn location reference
                                 rule.ItemToSpawn,
                                 rule.SpawnChance,
-                                rule.CustomBuildingPreset,     // Building preset is now optional
                                 rule.CustomRoomName,           // Room name is now optional
+                                rule.CustomBuildingPreset,     // Building preset is now optional
                                 rule.CustomFloorNames
                             );
                             break;
