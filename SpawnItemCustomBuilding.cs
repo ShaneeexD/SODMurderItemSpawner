@@ -25,7 +25,8 @@ namespace MurderItemSpawner
 
         // Method to spawn an item in a custom building and room
         public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float spawnChance, 
-            string targetRoomName = null, string buildingPreset = null, List<string> customFloorNames = null, string customSubRoomName = null)
+            string targetRoomName = null, string buildingPreset = null, List<string> customFloorNames = null, 
+            string customSubRoomName = null, string customRoomPreset = null, string customSubRoomPreset = null)
         {
             try
             {
@@ -68,9 +69,20 @@ namespace MurderItemSpawner
                 {
                     Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for sub-room with name: {customSubRoomName}");
                 }
+                
+                if (customRoomPreset != null)
+                {
+                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for room with preset: {customRoomPreset}");
+                }
+                
+                if (customSubRoomPreset != null)
+                {
+                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for sub-room with preset: {customSubRoomPreset}");
+                }
 
                 // Find the custom building and spawn the item
-                Interactable spawnedItem = SpawnItemInCustomBuilding(interactablePresetItem, owner, recipient, presetName, targetRoomName, buildingPreset, customFloorNames, customSubRoomName);
+                Interactable spawnedItem = SpawnItemInCustomBuilding(interactablePresetItem, owner, recipient, presetName, 
+                    targetRoomName, buildingPreset, customFloorNames, customSubRoomName, customRoomPreset, customSubRoomPreset);
                 
                 if (spawnedItem != null)
                 {
@@ -140,7 +152,8 @@ namespace MurderItemSpawner
         
         // Method to spawn an item in a custom building with specific room name
         private static Interactable SpawnItemInCustomBuilding(InteractablePreset itemPreset, Human owner, Human recipient, 
-            string itemNameForLog, string targetRoomName = null, string buildingPreset = null, List<string> customFloorNames = null, string customSubRoomName = null)
+            string itemNameForLog, string targetRoomName = null, string buildingPreset = null, List<string> customFloorNames = null, 
+            string customSubRoomName = null, string customRoomPreset = null, string customSubRoomPreset = null)
         {
             // Find rooms in buildings with the specified preset
             List<NewRoom> matchingRooms = new List<NewRoom>();
@@ -224,8 +237,36 @@ namespace MurderItemSpawner
                     string floorName = room.floor != null ? room.floor.name : "unknown floor";
                     string buildingName = building.name != null ? building.name : "unknown building";
                     
+                    // Filter out rooms with 'controller' in the name or ending with 'Null'
+                    if (roomName.Contains("controller", StringComparison.OrdinalIgnoreCase) || 
+                        roomName.EndsWith("Null", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Filtering out room: {roomName} (contains 'controller' or ends with 'Null')");
+                        continue; // Skip this room entirely
+                    }
+                    
                     bool isRoomMatch = false;
+                    bool isRoomPresetMatch = true; // Default to true if no room preset is specified
                     bool isFloorMatch = false; // Default to true if no floor names are specified
+                    
+                    // Check if the room preset matches the customRoomPreset parameter
+                    if (customRoomPreset != null && !string.IsNullOrEmpty(customRoomPreset))
+                    {
+                        isRoomPresetMatch = false; // Default to false if a room preset is specified
+                        
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Room preset check - Room preset: {presetName}, Looking for: '{customRoomPreset}'");
+                        
+                        // Check if the room preset name matches the customRoomPreset parameter
+                        if (presetName.Contains(customRoomPreset, StringComparison.OrdinalIgnoreCase))
+                        {
+                            isRoomPresetMatch = true;
+                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ ROOM PRESET MATCH: Room preset '{presetName}' contains '{customRoomPreset}'");
+                        }
+                        else
+                        {
+                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ NO ROOM PRESET MATCH: Room preset '{presetName}' does not contain '{customRoomPreset}'");
+                        }
+                    }
                     
                     // Check if the floor matches any of the custom floor names
                     if (customFloorNames == null || customFloorNames.Count == 0)
@@ -308,11 +349,24 @@ namespace MurderItemSpawner
                     // Log the room
                     Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Room: {roomName}, Preset: {presetName}, Floor: {floorName}, Building: {buildingName}, RoomMatch: {isRoomMatch}, FloorMatch: {isFloorMatch}");
                     
+                    // Filter out rooms with 'controller' in the name or ending with 'Null'
+                    bool isFilteredRoom = roomName.Contains("controller", StringComparison.OrdinalIgnoreCase) || 
+                                          roomName.EndsWith("Null", StringComparison.OrdinalIgnoreCase);
+                    
+                    if (isFilteredRoom)
+                    {
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Filtering out room: {roomName} (contains 'controller' or ends with 'Null')");
+                    }
+                    
                     // Add matching rooms to our list
-                    if (isRoomMatch && isFloorMatch)
+                    if (isRoomMatch && isFloorMatch && isRoomPresetMatch && !isFilteredRoom)
                     {
                         matchingRooms.Add(room);
                         Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] *** FOUND MATCHING ROOM: {roomName} in {buildingName} ***");
+                    }
+                    else if (!isRoomPresetMatch)
+                    {
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Room {roomName} matches name and floor but not preset. Skipping.");
                     }
                 }
             }
@@ -375,9 +429,38 @@ namespace MurderItemSpawner
                         {
                             if (room == null || string.IsNullOrEmpty(room.name)) continue;
                             
+                            // Filter out rooms with 'controller' in the name or ending with 'Null'
+                            if (room.name.Contains("controller", StringComparison.OrdinalIgnoreCase) || 
+                                room.name.EndsWith("Null", StringComparison.OrdinalIgnoreCase))
+                            {
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Filtering out sub-room: {room.name} (contains 'controller' or ends with 'Null')");
+                                continue;
+                            }
+                            
                             // Check if this room matches our sub-room criteria
                             bool hasCapitalLetters = customSubRoomName.Any(char.IsUpper);
                             bool isMatch = false;
+                            bool isSubRoomPresetMatch = true; // Default to true if no sub-room preset is specified
+                            
+                            // Check if the sub-room preset matches the customSubRoomPreset parameter
+                            if (customSubRoomPreset != null && !string.IsNullOrEmpty(customSubRoomPreset))
+                            {
+                                isSubRoomPresetMatch = false; // Default to false if a sub-room preset is specified
+                                string roomPresetName = room.preset != null ? room.preset.name : "no preset";
+                                
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Sub-room preset check - Room preset: {roomPresetName}, Looking for: '{customSubRoomPreset}'");
+                                
+                                // Check if the room preset name matches the customSubRoomPreset parameter
+                                if (roomPresetName.Contains(customSubRoomPreset, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    isSubRoomPresetMatch = true;
+                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM PRESET MATCH: Room preset '{roomPresetName}' contains '{customSubRoomPreset}'");
+                                }
+                                else
+                                {
+                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ NO SUB-ROOM PRESET MATCH: Room preset '{roomPresetName}' does not contain '{customSubRoomPreset}'");
+                                }
+                            }
                             
                             // For names with capital letters, use more precise matching
                             if (hasCapitalLetters)
@@ -403,9 +486,14 @@ namespace MurderItemSpawner
                                 Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM PREFIX MATCH: Found sub-room '{room.name}' containing both prefix '{locationPrefix}' and '{customSubRoomName}'");
                             }
                             
-                            if (isMatch)
+                            if (isMatch && isSubRoomPresetMatch)
                             {
                                 subRooms.Add(room);
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Added sub-room '{room.name}' to potential matches");
+                            }
+                            else if (isMatch && !isSubRoomPresetMatch)
+                            {
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Sub-room '{room.name}' matches name but not preset. Skipping.");
                             }
                         }
                         

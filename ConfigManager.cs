@@ -357,7 +357,9 @@ namespace MurderItemSpawner
                                 rule.CustomRoomName,           // Room name is now optional
                                 rule.CustomBuildingPreset,     // Building preset is now optional
                                 rule.CustomFloorNames,
-                                rule.CustomSubRoomName         // Sub-room name is optional
+                                rule.CustomSubRoomName,        // Sub-room name is optional
+                                rule.CustomRoomPreset,         // Room preset is optional
+                                rule.CustomSubRoomPreset       // Sub-room preset is optional
                             );
                             break;
                             
