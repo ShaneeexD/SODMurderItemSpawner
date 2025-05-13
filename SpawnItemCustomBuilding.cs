@@ -146,6 +146,9 @@ namespace MurderItemSpawner
             List<NewRoom> matchingRooms = new List<NewRoom>();
             CityData cityData = CityData.Instance;
             Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Searching for buildings with preset: {buildingPreset}");
+            
+            int processedCount = 0;
+            const int batchSize = 5; // Process 10 rooms before yielding
             foreach (var location in cityData.gameLocationDirectory)
             {
                 if (location == null || location.thisAsAddress == null) continue;
@@ -296,7 +299,13 @@ namespace MurderItemSpawner
                     {
                         Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Room {roomName} matches name and floor but not preset. Skipping.");
                     }
-                    yield return null; // Allow the game to continue running
+                    
+                    // Only yield after processing a batch of rooms
+                    if (++processedCount % batchSize == 0)
+                    {
+                        yield return null; // Allow the game to continue running
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Processed {processedCount} rooms so far");
+                    }
                 }
             }
             Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Found {matchingRooms.Count} matching rooms");
@@ -379,18 +388,23 @@ namespace MurderItemSpawner
                                 room.name.Contains(customSubRoomName, StringComparison.OrdinalIgnoreCase))
                             {
                                 isMatch = true;
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM PREFIX MATCH: Found sub-room '{room.name}' containing both prefix '{locationPrefix}' and '{customSubRoomName}'");
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] SUB-ROOM PREFIX MATCH: Found sub-room '{room.name}' containing both prefix '{locationPrefix}' and '{customSubRoomName}'");
                             }
                             if (isMatch && isSubRoomPresetMatch)
                             {
                                 subRooms.Add(room);
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Added sub-room '{room.name}' to potential matches");
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] *** FOUND MATCHING SUB-ROOM: {room.name} ***");
                             }
                             else if (isMatch && !isSubRoomPresetMatch)
                             {
                                 Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Sub-room '{room.name}' matches name but not preset. Skipping.");
                             }
-                            yield return null; // Allow the game to continue running
+                            // Only yield after processing a batch of rooms
+                            if (++processedCount % 10 == 0)
+                            {
+                                yield return null; // Allow the game to continue running
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Processed {processedCount} sub-rooms so far");
+                            }
                         }
                         if (subRooms.Count > 0)
                         {
