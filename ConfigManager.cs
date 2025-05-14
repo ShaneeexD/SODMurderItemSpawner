@@ -369,6 +369,19 @@ namespace MurderItemSpawner
                             );
                             break;
                             
+                        case SpawnLocationType.Home:
+                            // Spawn item in the recipient's home, but owned by the owner
+                            SpawnItemHome.SpawnItemAtLocation(
+                                itemOwner,                    // Owner of the item
+                                spawnLocationRecipient,        // Recipient (whose home will be used for spawn location)
+                                rule.ItemToSpawn,              // Item to spawn
+                                rule.SpawnChance,              // Chance to spawn
+                                rule.CustomRoomName,           // Optional target room name
+                                rule.UseFurniture,             // Whether to use furniture for item placement
+                                rule.FurniturePresets          // List of furniture presets to look for
+                            );
+                            break;
+                            
                         default:
                             // Default to mailbox spawner for now
                             Plugin.Log.LogInfo($"Using mailbox spawner for location type: {rule.SpawnLocation} (will be implemented in the future)");
