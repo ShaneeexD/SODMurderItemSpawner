@@ -29,7 +29,8 @@ namespace MurderItemSpawner
             string targetRoomName = null, string buildingPreset = null, List<string> customFloorNames = null, 
             string customSubRoomName = null, string customRoomPreset = null, string customSubRoomPreset = null,
             List<string> customRoomNames = null, List<string> customRoomPresets = null,
-            List<string> customSubRoomNames = null, List<string> customSubRoomPresets = null)
+            List<string> customSubRoomNames = null, List<string> customSubRoomPresets = null,
+            bool useFurniture = false, List<string> furniturePresets = null)
         {
             try
             {
@@ -108,11 +109,29 @@ namespace MurderItemSpawner
                 {
                     Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for sub-rooms with presets from list: {string.Join(", ", customSubRoomPresets)}");
                 }
+                
+                // Log furniture options
+                if (useFurniture)
+                {
+                    if (furniturePresets != null && furniturePresets.Count > 0)
+                    {
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Using furniture for item placement. Looking for furniture presets: {string.Join(", ", furniturePresets)}");
+                    }
+                    else
+                    {
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Using furniture for item placement, but no specific furniture presets provided. Will try to use any available furniture.");
+                    }
+                }
+                else
+                {
+                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Using node-based placement (not using furniture).");
+                }
 
                 // Find the custom building and spawn the item
                 CoroutineHelper.StartCoroutine(SpawnItemInCustomBuildingCoroutine(interactablePresetItem, owner, recipient, presetName, 
                     targetRoomName, buildingPreset, customFloorNames, customSubRoomName, customRoomPreset, customSubRoomPreset,
-                    customRoomNames, customRoomPresets, customSubRoomNames, customSubRoomPresets));
+                    customRoomNames, customRoomPresets, customSubRoomNames, customSubRoomPresets,
+                    useFurniture, furniturePresets));
             }
             catch (Exception ex)
             {
@@ -170,7 +189,7 @@ namespace MurderItemSpawner
             return false;
         }
         
-        private static IEnumerator SpawnItemInCustomBuildingCoroutine(InteractablePreset itemPreset, Human owner, Human recipient, string itemNameForLog, string targetRoomName = null, string buildingPreset = null, List<string> customFloorNames = null, string customSubRoomName = null, string customRoomPreset = null, string customSubRoomPreset = null, List<string> customRoomNames = null, List<string> customRoomPresets = null, List<string> customSubRoomNames = null, List<string> customSubRoomPresets = null)
+        private static IEnumerator SpawnItemInCustomBuildingCoroutine(InteractablePreset itemPreset, Human owner, Human recipient, string itemNameForLog, string targetRoomName = null, string buildingPreset = null, List<string> customFloorNames = null, string customSubRoomName = null, string customRoomPreset = null, string customSubRoomPreset = null, List<string> customRoomNames = null, List<string> customRoomPresets = null, List<string> customSubRoomNames = null, List<string> customSubRoomPresets = null, bool useFurniture = false, List<string> furniturePresets = null)
             {
             List<NewRoom> matchingRooms = new List<NewRoom>();
             CityData cityData = CityData.Instance;
@@ -648,9 +667,239 @@ namespace MurderItemSpawner
                     Plugin.Log.LogWarning($"[SpawnItemCustomBuilding] Could not determine location prefix for sub-room matching. Using original room instead.");
                 }
             }
+            // Attempt to place on furniture if requested
+            bool usedFurniture = false;
+            FurnitureLocation selectedFurniture = null;
+            FurniturePreset.SubObject selectedSubObject = null;
+            
+            if (useFurniture && selectedRoom != null)
+            {
+                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Attempting to find furniture in room {selectedRoom.name} for item placement");
+                
+                // Get all furniture in the room
+                List<FurnitureLocation> matchingFurniture = new List<FurnitureLocation>();
+                
+                if (selectedRoom.individualFurniture != null && selectedRoom.individualFurniture.Count > 0)
+                {
+                    // Check each piece of furniture in the room
+                    foreach (var furnitureLocation in selectedRoom.individualFurniture)
+                    {
+                        if (furnitureLocation == null || furnitureLocation.furniture == null) continue;
+                        
+                        // If specific furniture presets are specified, check if this furniture matches
+                        bool isMatch = false;
+                        if (furniturePresets != null && furniturePresets.Count > 0)
+                        {
+                            string furnitureName = furnitureLocation.furniture.name;
+                            foreach (string presetName in furniturePresets)
+                            {
+                                if (string.IsNullOrEmpty(presetName)) continue;
+                                
+                                if (furnitureName.Contains(presetName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    isMatch = true;
+                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Found matching furniture: {furnitureName} contains '{presetName}'");
+                                    break;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // If no specific furniture presets are specified, use any furniture
+                            isMatch = true;
+                        }
+                        
+                        if (isMatch)
+                        {
+                            matchingFurniture.Add(furnitureLocation);
+                        }
+                    }
+                }
+                
+                // If we found matching furniture, select one randomly
+                if (matchingFurniture.Count > 0)
+                {
+                    int randomFurnitureIndex = UnityEngine.Random.Range(0, matchingFurniture.Count);
+                    selectedFurniture = matchingFurniture[randomFurnitureIndex];
+                    
+                    // Check if the furniture has subobjects we can use for placement
+                    if (selectedFurniture.furniture.subObjects != null && selectedFurniture.furniture.subObjects.Count > 0)
+                    {
+                        // Find suitable subobjects for placement
+                        List<FurniturePreset.SubObject> suitableSubObjects = new List<FurniturePreset.SubObject>();
+                        
+                        foreach (var subObject in selectedFurniture.furniture.subObjects)
+                        {
+                            // For now, we'll use any subobject, but we could filter by type if needed
+                            // For DisplayCabinet, we might want to check for specific subobject types
+                            suitableSubObjects.Add(subObject);
+                        }
+                        
+                        if (suitableSubObjects.Count > 0)
+                        {
+                            int randomSubObjectIndex = UnityEngine.Random.Range(0, suitableSubObjects.Count);
+                            selectedSubObject = suitableSubObjects[randomSubObjectIndex];
+                            
+                            // Check if this subobject is already used by an interactable
+                            bool alreadyUsed = false;
+                            if (selectedFurniture.integratedInteractables != null)
+                            {
+                                foreach (var interactable in selectedFurniture.integratedInteractables)
+                                {
+                                    if (interactable != null && interactable.subObject == selectedSubObject)
+                                    {
+                                        alreadyUsed = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            if (!alreadyUsed)
+                            {
+                                usedFurniture = true;
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Will place item on furniture: {selectedFurniture.furniture.name}, using subobject index: {suitableSubObjects.IndexOf(selectedSubObject)}");
+                            }
+                            else
+                            {
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Selected subobject is already used by another interactable. Will try node placement instead.");
+                            }
+                        }
+                        else
+                        {
+                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] No suitable subobjects found on furniture {selectedFurniture.furniture.name}. Will try node placement instead.");
+                        }
+                    }
+                    else
+                    {
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Furniture {selectedFurniture.furniture.name} has no subobjects. Will try node placement instead.");
+                    }
+                }
+                else
+                {
+                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] No matching furniture found in room {selectedRoom.name}. Will try node placement instead.");
+                }
+            }
+            
+            // IMPORTANT: Don't reset furniture variables here as they're needed for item placement
+            
+            // If furniture wasn't requested or we couldn't find suitable furniture, try to place on furniture again
+            // This is a second attempt in case the first one failed
+            if (!usedFurniture && useFurniture && selectedRoom != null && selectedRoom.individualFurniture != null && selectedRoom.individualFurniture.Count > 0)
+            {
+                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Attempting to find furniture in room {selectedRoom.name} for item placement");
+                
+                // Get all furniture in the room
+                List<FurnitureLocation> matchingFurniture = new List<FurnitureLocation>();
+                
+                // Check each piece of furniture in the room
+                foreach (var furnitureLocation in selectedRoom.individualFurniture)
+                {
+                    if (furnitureLocation == null || furnitureLocation.furniture == null) continue;
+                    
+                    // If specific furniture presets are specified, check if this furniture matches
+                    bool isMatch = false;
+                    if (furniturePresets != null && furniturePresets.Count > 0)
+                    {
+                        string furnitureName = furnitureLocation.furniture.name;
+                        foreach (string presetName in furniturePresets)
+                        {
+                            if (string.IsNullOrEmpty(presetName)) continue;
+                            
+                            if (furnitureName.Contains(presetName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                isMatch = true;
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Found matching furniture: {furnitureName} contains '{presetName}'");
+                                break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // If no specific furniture presets are specified, use any furniture
+                        isMatch = true;
+                    }
+                    
+                    if (isMatch)
+                    {
+                        matchingFurniture.Add(furnitureLocation);
+                    }
+                }
+                
+                // If we found matching furniture, select one randomly
+                if (matchingFurniture.Count > 0)
+                {
+                    int randomFurnitureIndex = UnityEngine.Random.Range(0, matchingFurniture.Count);
+                    selectedFurniture = matchingFurniture[randomFurnitureIndex];
+                    
+                    // Check if the furniture has subobjects we can use for placement
+                    if (selectedFurniture.furniture.subObjects != null && selectedFurniture.furniture.subObjects.Count > 0)
+                    {
+                        // Find suitable subobjects for placement
+                        List<FurniturePreset.SubObject> suitableSubObjects = new List<FurniturePreset.SubObject>();
+                        
+                        foreach (var subObject in selectedFurniture.furniture.subObjects)
+                        {
+                            // For now, we'll use any subobject, but we could filter by type if needed
+                            // For DisplayCabinet, we might want to check for specific subobject types
+                            suitableSubObjects.Add(subObject);
+                        }
+                        
+                        if (suitableSubObjects.Count > 0)
+                        {
+                            int randomSubObjectIndex = UnityEngine.Random.Range(0, suitableSubObjects.Count);
+                            selectedSubObject = suitableSubObjects[randomSubObjectIndex];
+                            
+                            // Check if this subobject is already used by an interactable
+                            bool alreadyUsed = false;
+                            if (selectedFurniture.integratedInteractables != null)
+                            {
+                                foreach (var interactable in selectedFurniture.integratedInteractables)
+                                {
+                                    if (interactable != null && interactable.subObject == selectedSubObject)
+                                    {
+                                        alreadyUsed = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            if (!alreadyUsed)
+                            {
+                                usedFurniture = true;
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Will place item on furniture: {selectedFurniture.furniture.name}, using subobject index: {suitableSubObjects.IndexOf(selectedSubObject)}");
+                            }
+                            else
+                            {
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Selected subobject is already used by another interactable. Will try node placement instead.");
+                            }
+                        }
+                        else
+                        {
+                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] No suitable subobjects found on furniture {selectedFurniture.furniture.name}. Will try node placement instead.");
+                        }
+                    }
+                    else
+                    {
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Furniture {selectedFurniture.furniture.name} has no subobjects. Will try node placement instead.");
+                    }
+                }
+                else
+                {
+                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] No matching furniture found in room {selectedRoom.name}. Will try node placement instead.");
+                }
+            }
+            
+            // Fall back to node placement if we couldn't use furniture or it wasn't requested
             NewNode placementNode = null;
             Vector3 spawnPosition = Vector3.zero;
-            if (selectedRoom.nodes != null && selectedRoom.nodes.Count > 0)
+            
+            // Skip node placement if we're using furniture
+            if (usedFurniture)
+            {
+                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Using furniture placement, skipping node placement");
+            }
+            // Otherwise try to use node placement
+            else if (selectedRoom.nodes != null && selectedRoom.nodes.Count > 0)
             {
                 List<NewNode> nodesList = new List<NewNode>();
                 foreach (var node in selectedRoom.nodes)
@@ -671,7 +920,7 @@ namespace MurderItemSpawner
                     yield break;
                 }
             }
-            else
+            else if (!usedFurniture) // Only show this warning if we're not using furniture
             {
                 Plugin.Log.LogWarning($"[SpawnItemCustomBuilding] No nodes found in selected room.");
                 yield break;
@@ -680,35 +929,160 @@ namespace MurderItemSpawner
             spawnPosition.x += UnityEngine.Random.Range(-0.1f, 0.1f);
             spawnPosition.z += UnityEngine.Random.Range(-0.1f, 0.1f);
             Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Calculated spawn position: {spawnPosition}");
-            if (placementNode == null)
-            {
-                Plugin.Log.LogWarning($"[SpawnItemCustomBuilding] Could not find a valid node for placement.");
-                yield break;
-            }
-            Il2CppSystem.Collections.Generic.List<Interactable.Passed> passedVars = new Il2CppSystem.Collections.Generic.List<Interactable.Passed>();
-            passedVars.Add(new Interactable.Passed(Interactable.PassedVarType.roomID, placementNode.room.roomID, null));
+            // Create the interactable based on whether we're using furniture or node placement
+            Interactable spawnedItem = null;
+            
             try
             {
-                float randomYRotation = UnityEngine.Random.Range(0f, 360f);
-                Vector3 randomRotation = new Vector3(0f, randomYRotation, 0f);
-                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Using random rotation: {randomRotation}");
-                Interactable spawnedItem = InteractableCreator.Instance.CreateWorldInteractable(
-                    itemPreset,                // The item preset
-                    owner,                     // The owner of the item
-                    owner,                     // The writer (same as owner)
-                    recipient,                 // The receiver
-                    spawnPosition,             // The position in the room
-                    randomRotation,            // Random rotation on Y axis (0-360 degrees)
-                    passedVars,                // Passed variables with room ID
-                    null,                      // No passed object
-                    ""                         // No load GUID
-                );
+                // If we're using furniture placement
+                if (usedFurniture && selectedFurniture != null && selectedSubObject != null)
+                {
+                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Creating item '{itemNameForLog}' on furniture {selectedFurniture.furniture.name} in room {selectedRoom.name}");
+                    
+                    // Create a list of passed variables for the room ID
+                    Il2CppSystem.Collections.Generic.List<Interactable.Passed> furniturePassedVars = new Il2CppSystem.Collections.Generic.List<Interactable.Passed>();
+                    furniturePassedVars.Add(new Interactable.Passed(Interactable.PassedVarType.roomID, selectedRoom.roomID, null));
+                    
+                    // Create the interactable on the furniture
+                    spawnedItem = InteractableCreator.Instance.CreateFurnitureSpawnedInteractableThreadSafe(
+                        itemPreset,                // The item preset
+                        selectedRoom,              // The room
+                        selectedFurniture,         // The furniture location
+                        selectedSubObject,         // The subobject to place on
+                        owner,                     // The owner of the item
+                        owner,                     // The writer (same as owner)
+                        null,                      // No passed object
+                        furniturePassedVars,       // Passed variables with room ID
+                        null,                      // No passed object
+                        null,                      // No passed object
+                        ""                         // No load GUID
+                    );
+                    
+                    if (spawnedItem != null)
+                    {
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Successfully spawned '{itemNameForLog}' on furniture {selectedFurniture.furniture.name} in {selectedRoom.name}");
+                    }
+                    else
+                    {
+                        Plugin.Log.LogError($"[SpawnItemCustomBuilding] Failed to create furniture-spawned interactable '{itemNameForLog}'");
+                    }
+                }
+                // If we're using node placement
+                else if (placementNode != null)
+                {
+                    // Create a list of passed variables for the room ID
+                    Il2CppSystem.Collections.Generic.List<Interactable.Passed> passedVars = new Il2CppSystem.Collections.Generic.List<Interactable.Passed>();
+                    passedVars.Add(new Interactable.Passed(Interactable.PassedVarType.roomID, placementNode.room.roomID, null));
+                    
+                    float randomYRotation = UnityEngine.Random.Range(0f, 360f);
+                    Vector3 randomRotation = new Vector3(0f, randomYRotation, 0f);
+                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Using random rotation: {randomRotation}");
+                    
+                    spawnedItem = InteractableCreator.Instance.CreateWorldInteractable(
+                        itemPreset,                // The item preset
+                        owner,                     // The owner of the item
+                        owner,                     // The writer (same as owner)
+                        recipient,                 // The receiver
+                        spawnPosition,             // The position in the room
+                        randomRotation,            // Random rotation on Y axis (0-360 degrees)
+                        passedVars,                // Passed variables with room ID
+                        null,                      // No passed object
+                        ""                         // No load GUID
+                    );
+                    
+                    if (spawnedItem != null)
+                    {
+                        spawnedItem.node = placementNode;
+                        spawnedItem.UpdateWorldPositionAndNode(true, true);
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Successfully created item in custom location at node");
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Item position: {spawnedItem.wPos}, node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
+                    }
+                    else
+                    {
+                        Plugin.Log.LogError($"[SpawnItemCustomBuilding] Failed to create node-based interactable '{itemNameForLog}'");
+                    }
+                }
+                else
+                {
+                    Plugin.Log.LogWarning($"[SpawnItemCustomBuilding] Could not find a valid placement node or furniture in room {selectedRoom.name}");
+                    yield break;
+                }
+                
+                // Return the result
                 if (spawnedItem != null)
                 {
-                    spawnedItem.node = placementNode;
-                    spawnedItem.UpdateWorldPositionAndNode(true, true);
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Successfully created item in custom location");
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Item position: {spawnedItem.wPos}, node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
+                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Item '{itemNameForLog}' successfully created in {selectedRoom.name}");
+                    
+                    // Log all furniture in the room for reference
+                    if (selectedRoom != null && selectedRoom.individualFurniture != null && selectedRoom.individualFurniture.Count > 0)
+                    {
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] === FURNITURE INVENTORY FOR ROOM: {selectedRoom.name} ===");
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Total furniture count: {selectedRoom.individualFurniture.Count}");
+                        
+                        Dictionary<string, int> furnitureTypes = new Dictionary<string, int>();
+                        
+                        foreach (var furniture in selectedRoom.individualFurniture)
+                        {
+                            if (furniture != null && furniture.furniture != null)
+                            {
+                                string furnitureName = furniture.furniture.name;
+                                
+                                // Count furniture types
+                                if (furnitureTypes.ContainsKey(furnitureName))
+                                {
+                                    furnitureTypes[furnitureName]++;
+                                }
+                                else
+                                {
+                                    furnitureTypes[furnitureName] = 1;
+                                }
+                                
+                                // Log subobject information for each furniture
+                                int subObjectCount = furniture.furniture.subObjects != null ? furniture.furniture.subObjects.Count : 0;
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Furniture: {furnitureName}, SubObjects: {subObjectCount}");
+                                
+                                if (subObjectCount > 0)
+                                {
+                                    for (int i = 0; i < furniture.furniture.subObjects.Count; i++)
+                                    {
+                                        var subObject = furniture.furniture.subObjects[i];
+                                        bool isUsed = false;
+                                        
+                                        // Check if this subobject is already used
+                                        if (furniture.integratedInteractables != null)
+                                        {
+                                            foreach (var interactable in furniture.integratedInteractables)
+                                            {
+                                                if (interactable != null && interactable.subObject == subObject)
+                                                {
+                                                    isUsed = true;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        
+                                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding]   - SubObject {i}: {(isUsed ? "USED" : "AVAILABLE")}");
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Log summary of furniture types
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] === FURNITURE SUMMARY ===");
+                        foreach (var kvp in furnitureTypes.OrderByDescending(x => x.Value))
+                        {
+                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] {kvp.Key}: {kvp.Value} instances");
+                        }
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] === END FURNITURE INVENTORY ===");
+                    }
+                    else
+                    {
+                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] No furniture found in room {selectedRoom.name}");
+                    }
+                }
+                else
+                {
+                    Plugin.Log.LogError($"[SpawnItemCustomBuilding] Failed to create item '{itemNameForLog}' in {selectedRoom.name}");
                 }
             }
             catch (Exception ex)
@@ -716,6 +1090,8 @@ namespace MurderItemSpawner
                 Plugin.Log.LogError($"[SpawnItemCustomBuilding] Error spawning item: {ex.Message}");
                 Plugin.Log.LogError($"[SpawnItemCustomBuilding] Stack trace: {ex.StackTrace}");
             }
+            
+            yield break;
         }
     }
 }

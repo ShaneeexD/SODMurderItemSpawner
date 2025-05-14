@@ -363,7 +363,9 @@ namespace MurderItemSpawner
                                 rule.CustomRoomNames,          // List of room names (new)
                                 rule.CustomRoomPresets,        // List of room presets (new)
                                 rule.CustomSubRoomNames,       // List of sub-room names (new)
-                                rule.CustomSubRoomPresets      // List of sub-room presets (new)
+                                rule.CustomSubRoomPresets,     // List of sub-room presets (new)
+                                rule.UseFurniture,             // Whether to use furniture for item placement
+                                rule.FurniturePresets          // List of furniture presets to look for
                             );
                             break;
                             

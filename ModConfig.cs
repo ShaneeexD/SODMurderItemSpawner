@@ -180,6 +180,10 @@ namespace MurderItemSpawner
         public List<string> CustomSubRoomNames { get; set; } = new List<string>();
         public List<string> CustomSubRoomPresets { get; set; } = new List<string>();
         public List<string> CustomFloorNames { get; set; } = new List<string>();
+        
+        // Furniture placement options
+        public bool UseFurniture { get; set; } = false;
+        public List<string> FurniturePresets { get; set; } = new List<string>();
 
     }
 }
