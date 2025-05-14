@@ -117,7 +117,6 @@ namespace MurderItemSpawner
     [HarmonyPatch(typeof(MurderController), "OnCoverUpAccept")]
     public class OnCoverUpAcceptPatch
     {
-        // This method will be called when a victim is discovered
         public static void Postfix()
         {
             try
@@ -142,7 +141,6 @@ namespace MurderItemSpawner
     [HarmonyPatch(typeof(MurderController), "OnCoverUpReject")]
     public class OnCoverUpRejectPatch
     {
-        // This method will be called when a victim is discovered
         public static void Postfix()
         {
             try
@@ -192,7 +190,6 @@ namespace MurderItemSpawner
     [HarmonyPatch(typeof(MurderController), "TriggerRansomDelivery")]
     public class TriggerRansomDeliveryPatch
     {
-        // This method will be called when a victim is discovered
         public static void Postfix()
         {
             try
@@ -217,19 +214,16 @@ namespace MurderItemSpawner
     [HarmonyPatch(typeof(MurderController), "KidnapperCollectsRansom")]
     public class KidnapperCollectsRansomPatch
     {
-        // This method will be called when a victim is discovered
         public static void Postfix()
         {
             try
             {
-                // Get the current murder type
                 string murderType = "";
                 if (MurderController.Instance != null && MurderController.Instance.chosenMO != null)
                 {
                     murderType = MurderController.Instance.chosenMO.name;
                 }
                 
-                // Check if any rules should be triggered for this event
                 ConfigManager.Instance.CheckRulesForEvent("KidnapperCollectsRansom", murderType);
             }
             catch (Exception ex)
@@ -242,7 +236,6 @@ namespace MurderItemSpawner
    [HarmonyPatch(typeof(MurderController), "KidnapperCollectedRansom")]
     public class KidnapperCollectedRansomPatch
     {
-        // This method will be called when a victim is discovered
         public static void Postfix()
         {
             try

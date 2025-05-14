@@ -100,17 +100,18 @@ namespace MurderItemSpawner
 
     public enum SpawnLocationType
     {
-        Mailbox,
-        Doormat,
-        HomeLobby,
-        WorkplaceLobby,
-        HomeBuildingEntrance,
-        WorkplaceBuildingEntrance,
-        CityHallBathroom,
-        HotelRooftopBar,
-        Home,
-        Random,
-        Custom
+        Mailbox = 0,
+        Doormat = 1,
+        HomeLobby = 2,
+        WorkplaceLobby = 3,
+        HomeBuildingEntrance = 4,
+        WorkplaceBuildingEntrance = 5,
+        CityHallBathroom = 6,
+        HotelRooftopBar = 7,
+        Home = 8,
+        Workplace = 9,
+        Random = 10,
+        Custom = 11
     }
 
     public enum SubLocationTypeBuildingEntrances
