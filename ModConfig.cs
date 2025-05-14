@@ -169,10 +169,16 @@ namespace MurderItemSpawner
         public List<string> RandomSpawnLocations { get; set; } = new List<string>();
         public List<string> HotelRooftopBarSubLocations { get; set; } = new List<string>();
         public string CustomBuildingPreset { get; set; } = "";
+        // Single string versions kept for backward compatibility
         public string CustomRoomName { get; set; } = "";
         public string CustomRoomPreset { get; set; } = "";
         public string CustomSubRoomName { get; set; } = "";
         public string CustomSubRoomPreset { get; set; } = "";
+        // New list versions
+        public List<string> CustomRoomNames { get; set; } = new List<string>();
+        public List<string> CustomRoomPresets { get; set; } = new List<string>();
+        public List<string> CustomSubRoomNames { get; set; } = new List<string>();
+        public List<string> CustomSubRoomPresets { get; set; } = new List<string>();
         public List<string> CustomFloorNames { get; set; } = new List<string>();
 
     }

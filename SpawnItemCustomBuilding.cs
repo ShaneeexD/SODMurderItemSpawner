@@ -27,7 +27,9 @@ namespace MurderItemSpawner
         // Method to spawn an item in a custom building and room
         public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float spawnChance, 
             string targetRoomName = null, string buildingPreset = null, List<string> customFloorNames = null, 
-            string customSubRoomName = null, string customRoomPreset = null, string customSubRoomPreset = null)
+            string customSubRoomName = null, string customRoomPreset = null, string customSubRoomPreset = null,
+            List<string> customRoomNames = null, List<string> customRoomPresets = null,
+            List<string> customSubRoomNames = null, List<string> customSubRoomPresets = null)
         {
             try
             {
@@ -57,6 +59,7 @@ namespace MurderItemSpawner
                     Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for any building with room name: {targetRoomName}");
                 }
                 
+                // Log floor names
                 if (customFloorNames != null && customFloorNames.Count > 0)
                 {
                     Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Using specific floor names: {string.Join(", ", customFloorNames)}");
@@ -66,24 +69,50 @@ namespace MurderItemSpawner
                     Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] No specific floor names provided, checking all floors");
                 }
                 
-                if (customSubRoomName != null)
+                // Log room names
+                if (!string.IsNullOrEmpty(targetRoomName))
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for sub-room with name: {customSubRoomName}");
+                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for room with name: {targetRoomName}");
+                }
+                if (customRoomNames != null && customRoomNames.Count > 0)
+                {
+                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for rooms with names from list: {string.Join(", ", customRoomNames)}");
                 }
                 
-                if (customRoomPreset != null)
+                // Log room presets
+                if (!string.IsNullOrEmpty(customRoomPreset))
                 {
                     Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for room with preset: {customRoomPreset}");
                 }
+                if (customRoomPresets != null && customRoomPresets.Count > 0)
+                {
+                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for rooms with presets from list: {string.Join(", ", customRoomPresets)}");
+                }
                 
-                if (customSubRoomPreset != null)
+                // Log sub-room names
+                if (!string.IsNullOrEmpty(customSubRoomName))
+                {
+                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for sub-room with name: {customSubRoomName}");
+                }
+                if (customSubRoomNames != null && customSubRoomNames.Count > 0)
+                {
+                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for sub-rooms with names from list: {string.Join(", ", customSubRoomNames)}");
+                }
+                
+                // Log sub-room presets
+                if (!string.IsNullOrEmpty(customSubRoomPreset))
                 {
                     Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for sub-room with preset: {customSubRoomPreset}");
+                }
+                if (customSubRoomPresets != null && customSubRoomPresets.Count > 0)
+                {
+                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for sub-rooms with presets from list: {string.Join(", ", customSubRoomPresets)}");
                 }
 
                 // Find the custom building and spawn the item
                 CoroutineHelper.StartCoroutine(SpawnItemInCustomBuildingCoroutine(interactablePresetItem, owner, recipient, presetName, 
-                    targetRoomName, buildingPreset, customFloorNames, customSubRoomName, customRoomPreset, customSubRoomPreset));
+                    targetRoomName, buildingPreset, customFloorNames, customSubRoomName, customRoomPreset, customSubRoomPreset,
+                    customRoomNames, customRoomPresets, customSubRoomNames, customSubRoomPresets));
             }
             catch (Exception ex)
             {
@@ -141,7 +170,7 @@ namespace MurderItemSpawner
             return false;
         }
         
-        private static IEnumerator SpawnItemInCustomBuildingCoroutine(InteractablePreset itemPreset, Human owner, Human recipient, string itemNameForLog, string targetRoomName = null, string buildingPreset = null, List<string> customFloorNames = null, string customSubRoomName = null, string customRoomPreset = null, string customSubRoomPreset = null)
+        private static IEnumerator SpawnItemInCustomBuildingCoroutine(InteractablePreset itemPreset, Human owner, Human recipient, string itemNameForLog, string targetRoomName = null, string buildingPreset = null, List<string> customFloorNames = null, string customSubRoomName = null, string customRoomPreset = null, string customSubRoomPreset = null, List<string> customRoomNames = null, List<string> customRoomPresets = null, List<string> customSubRoomNames = null, List<string> customSubRoomPresets = null)
             {
             List<NewRoom> matchingRooms = new List<NewRoom>();
             CityData cityData = CityData.Instance;
@@ -183,26 +212,57 @@ namespace MurderItemSpawner
                         continue;
                     }
 
-                    // --- NEW: Prioritized Preliminary Check ---
+                    // --- Prioritized Preliminary Check ---
                     bool criteriaProvided = !string.IsNullOrEmpty(targetRoomName) ||
                                             !string.IsNullOrEmpty(customRoomPreset) ||
-                                            (customFloorNames != null && customFloorNames.Count > 0);
+                                            (customFloorNames != null && customFloorNames.Count > 0) ||
+                                            (customRoomNames != null && customRoomNames.Count > 0) ||
+                                            (customRoomPresets != null && customRoomPresets.Count > 0);
 
                     bool preliminaryMatch = !criteriaProvided; // Pass if no specific criteria given
 
                     if (criteriaProvided)
                     {
                         // Check if room matches AT LEAST ONE provided criterion
+                        // Single string room name check (legacy)
                         if (!string.IsNullOrEmpty(targetRoomName) && roomName.Contains(targetRoomName, StringComparison.OrdinalIgnoreCase))
                         {
                             preliminaryMatch = true;
-                            // Plugin.Log.LogDebug($"[SpawnItemCustomBuilding] Preliminary match on Room Name: {roomName} contains {targetRoomName}");
+                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Preliminary match on Room Name: {roomName} contains {targetRoomName}");
                         }
+                        // List of room names check
+                        else if (customRoomNames != null && customRoomNames.Count > 0)
+                        {
+                            foreach (string customRoomName in customRoomNames)
+                            {
+                                if (!string.IsNullOrEmpty(customRoomName) && roomName.Contains(customRoomName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    preliminaryMatch = true;
+                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Preliminary match on Room Name (list): {roomName} contains {customRoomName}");
+                                    break;
+                                }
+                            }
+                        }
+                        // Single string room preset check (legacy)
                         else if (!string.IsNullOrEmpty(customRoomPreset) && presetName.Contains(customRoomPreset, StringComparison.OrdinalIgnoreCase))
                         {
                             preliminaryMatch = true;
-                            // Plugin.Log.LogDebug($"[SpawnItemCustomBuilding] Preliminary match on Room Preset: {presetName} contains {customRoomPreset}");
+                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Preliminary match on Room Preset: {presetName} contains {customRoomPreset}");
                         }
+                        // List of room presets check
+                        else if (customRoomPresets != null && customRoomPresets.Count > 0)
+                        {
+                            foreach (string roomPreset in customRoomPresets)
+                            {
+                                if (!string.IsNullOrEmpty(roomPreset) && presetName.Contains(roomPreset, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    preliminaryMatch = true;
+                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Preliminary match on Room Preset (list): {presetName} contains {roomPreset}");
+                                    break;
+                                }
+                            }
+                        }
+                        // Floor names check
                         else if (customFloorNames != null && customFloorNames.Count > 0)
                         {
                             foreach (string customFloorName in customFloorNames)
@@ -210,7 +270,7 @@ namespace MurderItemSpawner
                                 if (floorName.Contains(customFloorName, StringComparison.OrdinalIgnoreCase))
                                 {
                                     preliminaryMatch = true;
-                                    // Plugin.Log.LogDebug($"[SpawnItemCustomBuilding] Preliminary match on Floor Name: {floorName} contains {customFloorName}");
+                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Preliminary match on Floor Name: {floorName} contains {customFloorName}");
                                     break; 
                                 }
                             }
@@ -232,18 +292,46 @@ namespace MurderItemSpawner
                     bool isFloorMatch = false; 
 
                     // Detailed Room Preset Check (only if specified)
-                    if (!string.IsNullOrEmpty(customRoomPreset))
+                    bool roomPresetSpecified = !string.IsNullOrEmpty(customRoomPreset) || 
+                                              (customRoomPresets != null && customRoomPresets.Count > 0);
+                    
+                    if (roomPresetSpecified)
                     {
                         isRoomPresetMatch = false; // Must explicitly match
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Detailed Room preset check - Room preset: {presetName}, Looking for: '{customRoomPreset}'");
-                        if (presetName.Contains(customRoomPreset, StringComparison.OrdinalIgnoreCase))
+                        
+                        // Check single string room preset (legacy)
+                        if (!string.IsNullOrEmpty(customRoomPreset))
                         {
-                            isRoomPresetMatch = true;
-                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ Detailed ROOM PRESET MATCH: Room preset '{presetName}' contains '{customRoomPreset}'");
+                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Detailed Room preset check - Room preset: {presetName}, Looking for: '{customRoomPreset}'");
+                            if (presetName.Contains(customRoomPreset, StringComparison.OrdinalIgnoreCase))
+                            {
+                                isRoomPresetMatch = true;
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ Detailed ROOM PRESET MATCH: Room preset '{presetName}' contains '{customRoomPreset}'");
+                            }
+                            else
+                            {
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ Detailed NO ROOM PRESET MATCH: Room preset '{presetName}' does not contain '{customRoomPreset}'");
+                            }
                         }
-                        else
+                        
+                        // Check list of room presets
+                        if (!isRoomPresetMatch && customRoomPresets != null && customRoomPresets.Count > 0)
                         {
-                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ Detailed NO ROOM PRESET MATCH: Room preset '{presetName}' does not contain '{customRoomPreset}'");
+                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Detailed Room preset list check - Room preset: {presetName}, Looking for matches in list of {customRoomPresets.Count} presets");
+                            foreach (string roomPreset in customRoomPresets)
+                            {
+                                if (!string.IsNullOrEmpty(roomPreset) && presetName.Contains(roomPreset, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    isRoomPresetMatch = true;
+                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ Detailed ROOM PRESET LIST MATCH: Room preset '{presetName}' contains '{roomPreset}'");
+                                    break;
+                                }
+                            }
+                            
+                            if (!isRoomPresetMatch)
+                            {
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ Detailed NO ROOM PRESET LIST MATCH: Room preset '{presetName}' does not match any preset in the list");
+                            }
                         }
                     }
 
@@ -270,23 +358,51 @@ namespace MurderItemSpawner
                     }
 
                     // Detailed Room Name Check (only if specified)
-                    if (string.IsNullOrEmpty(targetRoomName))
+                    bool roomNameSpecified = !string.IsNullOrEmpty(targetRoomName) || 
+                                           (customRoomNames != null && customRoomNames.Count > 0);
+                                           
+                    if (!roomNameSpecified)
                     {
                         isRoomMatch = true; // No specific room name requested
                         Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ Detailed ANY ROOM: Using room '{roomName}' (no specific room requested)");
                     }
                     else
                     {
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Detailed Room check - Room name: {roomName}, Looking for: '{targetRoomName}'");
-                        // Using simple Contains for now, retain original capital letter check if needed
-                        if (roomName.Contains(targetRoomName, StringComparison.OrdinalIgnoreCase))
+                        isRoomMatch = false; // Must explicitly match
+                        
+                        // Check single string room name (legacy)
+                        if (!string.IsNullOrEmpty(targetRoomName))
                         {
-                            isRoomMatch = true;
-                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ Detailed ROOM MATCH: '{roomName}' contains '{targetRoomName}'");
+                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Detailed Room check - Room name: {roomName}, Looking for: '{targetRoomName}'");
+                            if (roomName.Contains(targetRoomName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                isRoomMatch = true;
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ Detailed ROOM MATCH: '{roomName}' contains '{targetRoomName}'");
+                            }
+                            else
+                            {
+                               Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ Detailed NO ROOM MATCH: Room '{roomName}' does not contain '{targetRoomName}'");
+                            }
                         }
-                        else
+                        
+                        // Check list of room names
+                        if (!isRoomMatch && customRoomNames != null && customRoomNames.Count > 0)
                         {
-                           Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ Detailed NO ROOM MATCH: Room '{roomName}' does not contain '{targetRoomName}'");
+                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Detailed Room name list check - Room name: {roomName}, Looking for matches in list of {customRoomNames.Count} names");
+                            foreach (string customRoomName in customRoomNames)
+                            {
+                                if (!string.IsNullOrEmpty(customRoomName) && roomName.Contains(customRoomName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    isRoomMatch = true;
+                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ Detailed ROOM NAME LIST MATCH: Room '{roomName}' contains '{customRoomName}'");
+                                    break;
+                                }
+                            }
+                            
+                            if (!isRoomMatch)
+                            {
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ Detailed NO ROOM NAME LIST MATCH: Room '{roomName}' does not match any name in the list");
+                            }
                         }
                     }
                     
@@ -325,9 +441,12 @@ namespace MurderItemSpawner
             int randomRoomIndex = UnityEngine.Random.Range(0, matchingRooms.Count);
             NewRoom selectedRoom = matchingRooms[randomRoomIndex];
             Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Selected room: {selectedRoom.name}");
-            if (!string.IsNullOrEmpty(customSubRoomName))
+            bool subRoomSpecified = !string.IsNullOrEmpty(customSubRoomName) || (customSubRoomNames != null && customSubRoomNames.Count > 0);
+            bool subRoomRequired = false; // By default, sub-rooms are optional even when specified
+            if (subRoomSpecified)
             {
-                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for sub-room: {customSubRoomName}");
+                string subRoomLogInfo = !string.IsNullOrEmpty(customSubRoomName) ? customSubRoomName : "from list";
+                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for sub-room: {subRoomLogInfo}");
                 string locationPrefix = "";
                 if (selectedRoom.gameLocation != null && 
                     selectedRoom.gameLocation.thisAsAddress != null && 
@@ -361,42 +480,128 @@ namespace MurderItemSpawner
                                 Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Filtering out sub-room: {room.name} (contains 'controller' or ends with 'Null')");
                                 continue;
                             }
-                            bool hasCapitalLetters = customSubRoomName.Any(char.IsUpper);
                             bool isMatch = false;
+                            bool hasCapitalLetters = false;
                             bool isSubRoomPresetMatch = true;
-                            if (customSubRoomPreset != null && !string.IsNullOrEmpty(customSubRoomPreset))
+                            bool subRoomPresetSpecified = (customSubRoomPreset != null && !string.IsNullOrEmpty(customSubRoomPreset)) ||
+                                                       (customSubRoomPresets != null && customSubRoomPresets.Count > 0);
+                            
+                            // Process single string sub-room name (legacy)
+                            if (!string.IsNullOrEmpty(customSubRoomName))
                             {
-                                isSubRoomPresetMatch = false;
+                                hasCapitalLetters = customSubRoomName.Any(char.IsUpper);
+                            }
+                            // Process list of sub-room names
+                            else if (customSubRoomNames != null && customSubRoomNames.Count > 0)
+                            {
+                                // We'll handle this in the matching section below
+                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Using list of {customSubRoomNames.Count} sub-room names for matching");
+                            }
+                                                       
+                            if (subRoomPresetSpecified)
+                            {
+                                isSubRoomPresetMatch = false; // Must explicitly match
                                 string roomPresetName = room.preset != null ? room.preset.name : "no preset";
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Sub-room preset check - Room preset: {roomPresetName}, Looking for: '{customSubRoomPreset}'");
-                                if (roomPresetName.Contains(customSubRoomPreset, StringComparison.OrdinalIgnoreCase))
+                                
+                                // Check single string sub-room preset (legacy)
+                                if (customSubRoomPreset != null && !string.IsNullOrEmpty(customSubRoomPreset))
                                 {
-                                    isSubRoomPresetMatch = true;
-                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM PRESET MATCH: Room preset '{roomPresetName}' contains '{customSubRoomPreset}'");
+                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Sub-room preset check - Room preset: {roomPresetName}, Looking for: '{customSubRoomPreset}'");
+                                    if (roomPresetName.Contains(customSubRoomPreset, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        isSubRoomPresetMatch = true;
+                                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM PRESET MATCH: Room preset '{roomPresetName}' contains '{customSubRoomPreset}'");
+                                    }
+                                    else
+                                    {
+                                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ NO SUB-ROOM PRESET MATCH: Room preset '{roomPresetName}' does not contain '{customSubRoomPreset}'");
+                                    }
                                 }
-                                else
+                                
+                                // Check list of sub-room presets
+                                if (!isSubRoomPresetMatch && customSubRoomPresets != null && customSubRoomPresets.Count > 0)
                                 {
-                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ NO SUB-ROOM PRESET MATCH: Room preset '{roomPresetName}' does not contain '{customSubRoomPreset}'");
+                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Sub-room preset list check - Room preset: {roomPresetName}, Looking for matches in list of {customSubRoomPresets.Count} presets");
+                                    foreach (string subRoomPreset in customSubRoomPresets)
+                                    {
+                                        if (!string.IsNullOrEmpty(subRoomPreset) && roomPresetName.Contains(subRoomPreset, StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            isSubRoomPresetMatch = true;
+                                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM PRESET LIST MATCH: Room preset '{roomPresetName}' contains '{subRoomPreset}'");
+                                            break;
+                                        }
+                                    }
+                                    
+                                    if (!isSubRoomPresetMatch)
+                                    {
+                                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ NO SUB-ROOM PRESET LIST MATCH: Room preset '{roomPresetName}' does not match any preset in the list");
+                                    }
                                 }
                             }
-                            if (hasCapitalLetters)
+                            // Check single string sub-room name (legacy)
+                            if (!string.IsNullOrEmpty(customSubRoomName))
                             {
-                                if (room.name.Contains(customSubRoomName, StringComparison.OrdinalIgnoreCase))
+                                if (hasCapitalLetters)
+                                {
+                                    if (room.name.Contains(customSubRoomName, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        isMatch = true;
+                                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM CAPITAL MATCH: Found sub-room '{room.name}' containing '{customSubRoomName}'");
+                                    }
+                                }
+                                else if (room.name.Contains(customSubRoomName, StringComparison.OrdinalIgnoreCase))
                                 {
                                     isMatch = true;
-                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM CAPITAL MATCH: Found sub-room '{room.name}' containing '{customSubRoomName}'");
+                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM LOWERCASE MATCH: Found sub-room '{room.name}' containing '{customSubRoomName}'");
+                                }
+                                
+                                if (!isMatch && room.name.Contains(locationPrefix, StringComparison.OrdinalIgnoreCase) && 
+                                    room.name.Contains(customSubRoomName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    isMatch = true;
+                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] SUB-ROOM PREFIX MATCH: Found sub-room '{room.name}' containing both prefix '{locationPrefix}' and '{customSubRoomName}'");
                                 }
                             }
-                            else if (room.name.Contains(customSubRoomName, StringComparison.OrdinalIgnoreCase))
+                            
+                            // Check list of sub-room names
+                            if (!isMatch && customSubRoomNames != null && customSubRoomNames.Count > 0)
                             {
-                                isMatch = true;
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM LOWERCASE MATCH: Found sub-room '{room.name}' containing '{customSubRoomName}'");
-                            }
-                            if (!isMatch && room.name.Contains(locationPrefix, StringComparison.OrdinalIgnoreCase) && 
-                                room.name.Contains(customSubRoomName, StringComparison.OrdinalIgnoreCase))
-                            {
-                                isMatch = true;
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] SUB-ROOM PREFIX MATCH: Found sub-room '{room.name}' containing both prefix '{locationPrefix}' and '{customSubRoomName}'");
+                                foreach (string subRoomName in customSubRoomNames)
+                                {
+                                    if (string.IsNullOrEmpty(subRoomName))
+                                        continue;
+                                        
+                                    bool hasCapitalsInName = subRoomName.Any(char.IsUpper);
+                                    
+                                    if (hasCapitalsInName)
+                                    {
+                                        if (room.name.Contains(subRoomName, StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            isMatch = true;
+                                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM LIST CAPITAL MATCH: Found sub-room '{room.name}' containing '{subRoomName}'");
+                                            break;
+                                        }
+                                    }
+                                    else if (room.name.Contains(subRoomName, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        isMatch = true;
+                                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM LIST LOWERCASE MATCH: Found sub-room '{room.name}' containing '{subRoomName}'");
+                                        break;
+                                    }
+                                    
+                                    if (!isMatch && room.name.Contains(locationPrefix, StringComparison.OrdinalIgnoreCase) && 
+                                        room.name.Contains(subRoomName, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        isMatch = true;
+                                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] SUB-ROOM LIST PREFIX MATCH: Found sub-room '{room.name}' containing both prefix '{locationPrefix}' and '{subRoomName}'");
+                                        break;
+                                    }
+                                }
+                                
+                                if (!isMatch)
+                                {
+                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ NO SUB-ROOM LIST MATCH: Room '{room.name}' does not match any name in the list");
+                                }
                             }
                             if (isMatch && isSubRoomPresetMatch)
                             {
@@ -416,13 +621,25 @@ namespace MurderItemSpawner
                         }
                         if (subRooms.Count > 0)
                         {
+                            // If we found matching sub-rooms, use one of them
                             int randomSubRoomIndex = UnityEngine.Random.Range(0, subRooms.Count);
                             selectedRoom = subRooms[randomSubRoomIndex];
                             Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Selected sub-room: {selectedRoom.name}");
                         }
+                        else if (!subRoomRequired)
+                        {
+                            // If sub-rooms are optional (default behavior), use the original room
+                            string subRoomSearchInfo = !string.IsNullOrEmpty(customSubRoomName) ? $"'{customSubRoomName}'" : 
+                                                      (customSubRoomNames != null && customSubRoomNames.Count > 0) ? $"list of {customSubRoomNames.Count} sub-room names" : "(no sub-room specified)";
+                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] No matching sub-rooms found for {subRoomSearchInfo} in building with prefix '{locationPrefix}'. Using original room instead (sub-rooms are optional).");
+                            // Keep using the originally selected room
+                        }
                         else
                         {
-                            Plugin.Log.LogWarning($"[SpawnItemCustomBuilding] No matching sub-rooms found for '{customSubRoomName}' in building with prefix '{locationPrefix}'. Using original room instead.");
+                            // If sub-rooms are required but none found, log a warning
+                            string subRoomSearchInfo = !string.IsNullOrEmpty(customSubRoomName) ? $"'{customSubRoomName}'" : 
+                                                      (customSubRoomNames != null && customSubRoomNames.Count > 0) ? $"list of {customSubRoomNames.Count} sub-room names" : "(no sub-room specified)";
+                            Plugin.Log.LogWarning($"[SpawnItemCustomBuilding] No matching sub-rooms found for {subRoomSearchInfo} in building with prefix '{locationPrefix}'. Using original room instead.");
                         }
                     }
                 }
@@ -438,7 +655,7 @@ namespace MurderItemSpawner
                 List<NewNode> nodesList = new List<NewNode>();
                 foreach (var node in selectedRoom.nodes)
                 {
-                    if (node.isInaccessable) { Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Filtering out node: {node.name} (inaccessible)"); continue; }
+                    if (node.isInaccessable || node.isObstacle) { Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Filtering out node: {node.name} (inaccessible)"); continue; }
                     nodesList.Add(node);
                 }
                 if (nodesList.Count > 0)

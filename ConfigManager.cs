@@ -354,12 +354,16 @@ namespace MurderItemSpawner
                                 spawnLocationRecipient,        // Recipient used for spawn location reference
                                 rule.ItemToSpawn,
                                 rule.SpawnChance,
-                                rule.CustomRoomName,           // Room name is now optional
+                                rule.CustomRoomName,           // Room name is now optional (legacy)
                                 rule.CustomBuildingPreset,     // Building preset is now optional
                                 rule.CustomFloorNames,
-                                rule.CustomSubRoomName,        // Sub-room name is optional
-                                rule.CustomRoomPreset,         // Room preset is optional
-                                rule.CustomSubRoomPreset       // Sub-room preset is optional
+                                rule.CustomSubRoomName,        // Sub-room name is optional (legacy)
+                                rule.CustomRoomPreset,         // Room preset is optional (legacy)
+                                rule.CustomSubRoomPreset,      // Sub-room preset is optional (legacy)
+                                rule.CustomRoomNames,          // List of room names (new)
+                                rule.CustomRoomPresets,        // List of room presets (new)
+                                rule.CustomSubRoomNames,       // List of sub-room names (new)
+                                rule.CustomSubRoomPresets      // List of sub-room presets (new)
                             );
                             break;
                             
