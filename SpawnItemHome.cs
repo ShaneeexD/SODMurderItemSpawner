@@ -3,26 +3,11 @@ using System.Collections;
 using System.Collections.Generic;
 using SOD.Common;
 using UnityEngine;
-using System.Linq;
 
 namespace MurderItemSpawner
 {
-    public class SpawnItemHome : MonoBehaviour
+    public class SpawnItemHome
     {
-        private static SpawnItemHome _instance;
-        private static SpawnItemHome Instance
-        {
-            get
-            {
-                if (_instance == null)
-                {
-                    GameObject go = new GameObject("SpawnItemHome_Instance");
-                    DontDestroyOnLoad(go);
-                    _instance = go.AddComponent<SpawnItemHome>();
-                }
-                return _instance;
-            }
-        }
 
         // Method to spawn an item in the recipient's home on furniture, but owned by the owner
         public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float spawnChance,
@@ -137,12 +122,8 @@ namespace MurderItemSpawner
                 }
             }
             
-            // If we didn't find any rooms, try to get the owner's current room
-            if (allRooms.Count == 0 && owner != null && owner.currentRoom != null)
-            {
-                allRooms.Add(owner.currentRoom);
-                Plugin.Log.LogInfo($"[SpawnItemHome] Added owner's current room: {owner.currentRoom.name}");
-            }
+            // We no longer add the owner's current room - we want to strictly use the recipient's rooms
+            // This ensures items are placed in the recipient's apartment, not the owner's
             
             if (allRooms.Count == 0)
             {
@@ -253,130 +234,12 @@ namespace MurderItemSpawner
             NewRoom selectedRoom = targetRooms[randomRoomIndex];
             Plugin.Log.LogInfo($"[SpawnItemHome] Selected room: {selectedRoom.name}");
             
-            // Process a batch of rooms
-            int processedCount = 0;
-            if (processedCount % 10 == 0)
-            {
-                yield return null; // Allow the game to continue running
-            }
-            
-            // Attempt to place on furniture if requested
+            // Try to place the item on furniture if requested
             bool usedFurniture = false;
             FurnitureLocation selectedFurniture = null;
             FurniturePreset.SubObject selectedSubObject = null;
             
-            if (useFurniture && selectedRoom != null)
-            {
-                Plugin.Log.LogInfo($"[SpawnItemHome] Attempting to find furniture in room {selectedRoom.name} for item placement");
-                
-                // Get all furniture in the room
-                List<FurnitureLocation> matchingFurniture = new List<FurnitureLocation>();
-                
-                if (selectedRoom.individualFurniture != null && selectedRoom.individualFurniture.Count > 0)
-                {
-                    // Check each piece of furniture in the room
-                    foreach (var furnitureLocation in selectedRoom.individualFurniture)
-                    {
-                        if (furnitureLocation == null || furnitureLocation.furniture == null) continue;
-                        
-                        // If specific furniture presets are specified, check if this furniture matches
-                        bool isMatch = false;
-                        if (furniturePresets != null && furniturePresets.Count > 0)
-                        {
-                            string furnitureName = furnitureLocation.furniture.name;
-                            foreach (string presetName in furniturePresets)
-                            {
-                                if (string.IsNullOrEmpty(presetName)) continue;
-                                
-                                if (furnitureName.Contains(presetName, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    isMatch = true;
-                                    Plugin.Log.LogInfo($"[SpawnItemHome] Found matching furniture: {furnitureName} contains '{presetName}'");
-                                    break;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            // If no specific furniture presets are specified, use any furniture
-                            isMatch = true;
-                        }
-                        
-                        if (isMatch)
-                        {
-                            matchingFurniture.Add(furnitureLocation);
-                        }
-                    }
-                    
-                    // If we found matching furniture, select one randomly
-                    if (matchingFurniture.Count > 0)
-                    {
-                        int randomFurnitureIndex = UnityEngine.Random.Range(0, matchingFurniture.Count);
-                        selectedFurniture = matchingFurniture[randomFurnitureIndex];
-                        
-                        // Check if the furniture has subobjects we can use for placement
-                        if (selectedFurniture.furniture.subObjects != null && selectedFurniture.furniture.subObjects.Count > 0)
-                        {
-                            // Find suitable subobjects for placement
-                            List<FurniturePreset.SubObject> suitableSubObjects = new List<FurniturePreset.SubObject>();
-                            
-                            foreach (var subObject in selectedFurniture.furniture.subObjects)
-                            {
-                                // For now, we'll use any subobject, but we could filter by type if needed
-                                suitableSubObjects.Add(subObject);
-                            }
-                            
-                            if (suitableSubObjects.Count > 0)
-                            {
-                                int randomSubObjectIndex = UnityEngine.Random.Range(0, suitableSubObjects.Count);
-                                selectedSubObject = suitableSubObjects[randomSubObjectIndex];
-                                
-                                // Check if this subobject is already used by an interactable
-                                bool alreadyUsed = false;
-                                if (selectedFurniture.integratedInteractables != null)
-                                {
-                                    foreach (var interactable in selectedFurniture.integratedInteractables)
-                                    {
-                                        if (interactable != null && interactable.subObject == selectedSubObject)
-                                        {
-                                            alreadyUsed = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                
-                                if (!alreadyUsed)
-                                {
-                                    usedFurniture = true;
-                                    Plugin.Log.LogInfo($"[SpawnItemHome] Will place item on furniture: {selectedFurniture.furniture.name}, using subobject index: {suitableSubObjects.IndexOf(selectedSubObject)}");
-                                }
-                                else
-                                {
-                                    Plugin.Log.LogInfo($"[SpawnItemHome] Selected subobject is already used by another interactable. Will try node placement instead.");
-                                }
-                            }
-                            else
-                            {
-                                Plugin.Log.LogInfo($"[SpawnItemHome] No suitable subobjects found on furniture {selectedFurniture.furniture.name}. Will try node placement instead.");
-                            }
-                        }
-                        else
-                        {
-                            Plugin.Log.LogInfo($"[SpawnItemHome] Furniture {selectedFurniture.furniture.name} has no subobjects. Will try node placement instead.");
-                        }
-                    }
-                    else
-                    {
-                        Plugin.Log.LogInfo($"[SpawnItemHome] No matching furniture found in room {selectedRoom.name}. Will try node placement instead.");
-                    }
-                }
-            }
-            
-            // IMPORTANT: Don't reset furniture variables here as they're needed for item placement
-            
-            // If furniture wasn't requested or we couldn't find suitable furniture, try to place on furniture again
-            // This is a second attempt in case the first one failed
-            if (!usedFurniture && useFurniture && selectedRoom != null && selectedRoom.individualFurniture != null && selectedRoom.individualFurniture.Count > 0)
+            if (useFurniture && selectedRoom != null && selectedRoom.individualFurniture != null && selectedRoom.individualFurniture.Count > 0)
             {
                 Plugin.Log.LogInfo($"[SpawnItemHome] Attempting to find furniture in room {selectedRoom.name} for item placement");
                 
@@ -464,7 +327,19 @@ namespace MurderItemSpawner
                                 Plugin.Log.LogInfo($"[SpawnItemHome] Selected subobject is already used by another interactable. Will try node placement instead.");
                             }
                         }
+                        else
+                        {
+                            Plugin.Log.LogInfo($"[SpawnItemHome] No suitable subobjects found on furniture {selectedFurniture.furniture.name}. Will try node placement instead.");
+                        }
                     }
+                    else
+                    {
+                        Plugin.Log.LogInfo($"[SpawnItemHome] Furniture {selectedFurniture.furniture.name} has no subobjects. Will try node placement instead.");
+                    }
+                }
+                else
+                {
+                    Plugin.Log.LogInfo($"[SpawnItemHome] No matching furniture found in room {selectedRoom.name}. Will try node placement instead.");
                 }
             }
             
@@ -507,7 +382,7 @@ namespace MurderItemSpawner
             
             if (!usedFurniture)
             {
-                spawnPosition.y += 0.00f;
+                spawnPosition.y += 0.0f;
                 spawnPosition.x += UnityEngine.Random.Range(-0.1f, 0.1f);
                 spawnPosition.z += UnityEngine.Random.Range(-0.1f, 0.1f);
                 Plugin.Log.LogInfo($"[SpawnItemHome] Calculated spawn position: {spawnPosition}");
@@ -625,7 +500,6 @@ namespace MurderItemSpawner
                     yield break;
                 }
                 
-                // Return the result
                 if (spawnedItem != null)
                 {
                     Plugin.Log.LogInfo($"[SpawnItemHome] Item '{itemNameForLog}' successfully created in {selectedRoom.name}");
@@ -633,73 +507,19 @@ namespace MurderItemSpawner
                     // Log all furniture in the room for reference
                     if (selectedRoom != null && selectedRoom.individualFurniture != null && selectedRoom.individualFurniture.Count > 0)
                     {
-                        Plugin.Log.LogInfo($"[SpawnItemHome] === FURNITURE INVENTORY FOR ROOM: {selectedRoom.name} ===");
-                        Plugin.Log.LogInfo($"[SpawnItemHome] Total furniture count: {selectedRoom.individualFurniture.Count}");
-                        
-                        Dictionary<string, int> furnitureTypes = new Dictionary<string, int>();
-                        
+                        Plugin.Log.LogInfo($"[SpawnItemHome] Furniture in room {selectedRoom.name}:");
                         foreach (var furniture in selectedRoom.individualFurniture)
                         {
                             if (furniture != null && furniture.furniture != null)
                             {
-                                string furnitureName = furniture.furniture.name;
-                                
-                                // Count furniture types
-                                if (furnitureTypes.ContainsKey(furnitureName))
-                                {
-                                    furnitureTypes[furnitureName]++;
-                                }
-                                else
-                                {
-                                    furnitureTypes[furnitureName] = 1;
-                                }
-                                
-                                // Log subobject information for each furniture
-                                int subObjectCount = furniture.furniture.subObjects != null ? furniture.furniture.subObjects.Count : 0;
-                                Plugin.Log.LogInfo($"[SpawnItemHome] Furniture: {furnitureName}, SubObjects: {subObjectCount}");
-                                
-                                if (subObjectCount > 0)
-                                {
-                                    for (int i = 0; i < furniture.furniture.subObjects.Count; i++)
-                                    {
-                                        var subObject = furniture.furniture.subObjects[i];
-                                        bool isUsed = false;
-                                        
-                                        // Check if this subobject is already used
-                                        if (furniture.integratedInteractables != null)
-                                        {
-                                            foreach (var interactable in furniture.integratedInteractables)
-                                            {
-                                                if (interactable != null && interactable.subObject == subObject)
-                                                {
-                                                    isUsed = true;
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                        
-                                        Plugin.Log.LogInfo($"[SpawnItemHome]   - SubObject {i}: {(isUsed ? "USED" : "AVAILABLE")}");
-                                    }
-                                }
+                                Plugin.Log.LogInfo($"[SpawnItemHome] - {furniture.furniture.name}");
                             }
                         }
-                        
-                        // Log summary of furniture types
-                        Plugin.Log.LogInfo($"[SpawnItemHome] === FURNITURE SUMMARY ===");
-                        foreach (var kvp in furnitureTypes.OrderByDescending(x => x.Value))
-                        {
-                            Plugin.Log.LogInfo($"[SpawnItemHome] {kvp.Key}: {kvp.Value} instances");
-                        }
-                        Plugin.Log.LogInfo($"[SpawnItemHome] === END FURNITURE INVENTORY ===");
                     }
                     else
                     {
                         Plugin.Log.LogInfo($"[SpawnItemHome] No furniture found in room {selectedRoom.name}");
                     }
-                }
-                else
-                {
-                    Plugin.Log.LogError($"[SpawnItemHome] Failed to create item '{itemNameForLog}' in {selectedRoom.name}");
                 }
             }
             catch (Exception ex)
@@ -707,8 +527,6 @@ namespace MurderItemSpawner
                 Plugin.Log.LogError($"[SpawnItemHome] Error spawning item: {ex.Message}");
                 Plugin.Log.LogError($"[SpawnItemHome] Stack trace: {ex.StackTrace}");
             }
-            
-            yield break;
         }
     }
 }
