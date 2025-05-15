@@ -9,6 +9,7 @@ import {
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import HomeIcon from '@mui/icons-material/Home';
 import HelpIcon from '@mui/icons-material/Help';
+import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 
 const Navigation: React.FC = () => {
   const location = useLocation();
@@ -43,6 +44,18 @@ const Navigation: React.FC = () => {
             }}
           >
             Tutorial
+          </Button>
+          <Button 
+            component={RouterLink} 
+            to="/resources" 
+            color="inherit" 
+            startIcon={<LibraryBooksIcon />}
+            sx={{ 
+              fontWeight: location.pathname === '/resources' ? 'bold' : 'normal',
+              borderBottom: location.pathname === '/resources' ? '2px solid white' : 'none'
+            }}
+          >
+            Resources
           </Button>
         </Box>
       </Toolbar>

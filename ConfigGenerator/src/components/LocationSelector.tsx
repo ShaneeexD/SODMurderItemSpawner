@@ -319,18 +319,38 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ locationData, onCha
                 renderValue={(selected) => (
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                     {(selected as string[]).map((value) => (
-                      <Chip key={value} label={value} />
+                      <Chip 
+                        key={value} 
+                        label={value} 
+                      />
                     ))}
                   </Box>
                 )}
               >
+                <MenuItem value="BathroomUnisexEatery">Bathroom</MenuItem>
+                <MenuItem value="EateryKitchen">Kitchen</MenuItem>
                 <MenuItem value="RooftopBar">Rooftop Bar</MenuItem>
-                <MenuItem value="BarDiningRoom">Bar Dining Room</MenuItem>
-                <MenuItem value="BarKitchen">Bar Kitchen</MenuItem>
-                <MenuItem value="BarRestroom">Bar Restroom</MenuItem>
+                <MenuItem value="BusinessBackroom">Backroom</MenuItem>
               </Select>
               <FormHelperText>Select specific areas within the hotel rooftop bar</FormHelperText>
             </FormControl>
+            
+            {/* Selected sub-locations display with delete functionality */}
+            {(safeLocationData.hotelRooftopBarSubLocations || []).length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>Selected Sub-locations:</Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {(safeLocationData.hotelRooftopBarSubLocations || []).map((value) => (
+                    <Chip 
+                      key={value} 
+                      label={value} 
+                      onDelete={handleRemoveArrayItem('hotelRooftopBarSubLocations', value)}
+                      sx={{ m: 0.5 }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            )}
           </Paper>
         </Box>
       )}
@@ -382,7 +402,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ locationData, onCha
                     />
                   ))}
                 </Box>
-                <FormHelperText>Add custom floor names (e.g., Floor1, Basement)</FormHelperText>
+                <FormHelperText>Add custom floor names (e.g., CityHall_GroundFloor, OFA_FirstFloor1)</FormHelperText>
               </Box>
               
               {/* Room Names */}
@@ -425,7 +445,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ locationData, onCha
                     />
                   ))}
                 </Box>
-                <FormHelperText>Add custom room names (e.g., LivingRoom, Kitchen, Bedroom)</FormHelperText>
+                <FormHelperText>Add custom room names (e.g., Enforcer Office, Diner, Restaurant)</FormHelperText>
               </Box>
               
               {/* Room Presets */}
@@ -507,7 +527,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ locationData, onCha
                     />
                   ))}
                 </Box>
-                <FormHelperText>Add custom sub-room names (e.g., KitchenCounter, DiningArea)</FormHelperText>
+                <FormHelperText>Add custom sub-room names (e.g., Kitchen, Backroom, Bathroom)</FormHelperText>
               </Box>
               
               {/* Sub-Room Presets */}

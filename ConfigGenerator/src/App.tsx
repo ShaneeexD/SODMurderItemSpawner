@@ -3,6 +3,7 @@ import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ConfigForm from './components/ConfigForm';
 import Tutorial from './components/Tutorial';
+import Resources from './components/Resources';
 import Navigation from './components/Navigation';
 import './App.css';
 
@@ -33,6 +34,7 @@ function App() {
                 </div>
               } />
               <Route path="/tutorial" element={<Tutorial />} />
+              <Route path="/resources" element={<Resources />} />
             </Routes>
           </div>
         </div>

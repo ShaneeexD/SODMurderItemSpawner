@@ -360,23 +360,23 @@ const Tutorial: React.FC = () => {
                 <ListItemText primary="BelongsTo value 0 represents the murderer, 1 represents the victim and so on, these define whos fingerprints the item will have" />
               </ListItem>
               <ListItem>
-                <ListItemIcon><InventoryIcon color="primary" fontSize="small" /></ListItemIcon>
+                <ListItemIcon><InfoIcon color="primary" fontSize="small" /></ListItemIcon>
                 <ListItemText primary="If furniture is true, the item will spawn on a furniture item, otherwise it will spawn at a random floor node within the address" />
               </ListItem>
               <ListItem>
-                <ListItemIcon><CodeIcon color="primary" fontSize="small" /></ListItemIcon>
+                <ListItemIcon><InfoIcon color="primary" fontSize="small" /></ListItemIcon>
                 <ListItemText primary="CustomRoomName is used to further narrow down the location if you want a specific room, it is optional" />
               </ListItem>
               <ListItem>
-                <ListItemIcon><CodeIcon color="primary" fontSize="small" /></ListItemIcon>
+                <ListItemIcon><InfoIcon color="primary" fontSize="small" /></ListItemIcon>
                 <ListItemText primary="CustomRoomName works by the address name prefix within the game, for example '804 Chandlers Heights' is the address, if you wanted to specify the bedroom, simply use 'Bedroom' the mod will automatically find the correct room name using the address prefix" />
               </ListItem>
               <ListItem>
-                <ListItemIcon><CodeIcon color="primary" fontSize="small" /></ListItemIcon>
+                <ListItemIcon><InfoIcon color="primary" fontSize="small" /></ListItemIcon>
                 <ListItemText primary="If furniture is true and no custom room is specified, it will search the entire address for a matching furniture item, if it cannot find one it will spawn at a random floor node within the address" />
               </ListItem>
               <ListItem>
-                <ListItemIcon><CodeIcon color="primary" fontSize="small" /></ListItemIcon>
+                <ListItemIcon><InfoIcon color="primary" fontSize="small" /></ListItemIcon>
                 <ListItemText primary="If furniture is true and a custom room is specified, it will search the custom room for a matching furniture item, if it cannot find one it will spawn at a random floor node within the address and not search the other rooms" />
               </ListItem>
             </List>
