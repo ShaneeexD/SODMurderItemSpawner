@@ -17,6 +17,7 @@ import {
   ListItemText,
   Button
 } from '@mui/material';
+import RandomLocationSelector from './RandomLocationSelector';
 import type { SelectChangeEvent } from '@mui/material';
 import { SpawnLocationType, SubLocationTypeBuildingEntrances } from '../models/configTypes';
 import presets from '../presets.json';
@@ -291,36 +292,15 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ locationData, onCha
 
       {/* Random Location Fields */}
       {showRandomLocationFields && (
-        <Box>
-          <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
-            <Typography variant="subtitle1" gutterBottom>Random Location Options</Typography>
-            <FormControl fullWidth sx={{ mt: 1 }}>
-              <InputLabel id="random-locations-label">Possible Locations</InputLabel>
-              <Select
-                labelId="random-locations-label"
-                id="random-locations"
-                multiple
-                value={safeLocationData.randomSpawnLocations || []}
-                onChange={handleArrayChange('randomSpawnLocations')}
-                renderValue={(selected) => (
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {(selected as string[]).map((value) => (
-                      <Chip key={value} label={value} />
-                    ))}
-                  </Box>
-                )}
-              >
-                <MenuItem value="Mailbox">Mailbox</MenuItem>
-                <MenuItem value="Doormat">Doormat</MenuItem>
-                <MenuItem value="HomeLobby">Home Lobby</MenuItem>
-                <MenuItem value="WorkplaceLobby">Workplace Lobby</MenuItem>
-                <MenuItem value="HomeBuildingEntrance">Home Building Entrance</MenuItem>
-                <MenuItem value="WorkplaceBuildingEntrance">Workplace Building Entrance</MenuItem>
-              </Select>
-              <FormHelperText>Select possible random locations</FormHelperText>
-            </FormControl>
-          </Paper>
-        </Box>
+        <RandomLocationSelector
+          randomLocations={safeLocationData.randomSpawnLocations || []}
+          onChange={(locations) => {
+            onChange({
+              ...safeLocationData,
+              randomSpawnLocations: locations
+            });
+          }}
+        />
       )}
 
       {/* Hotel Rooftop Bar Fields */}

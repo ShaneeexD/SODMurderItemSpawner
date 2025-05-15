@@ -1,24 +1,43 @@
+// App component
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ConfigForm from './components/ConfigForm';
+import Tutorial from './components/Tutorial';
+import Navigation from './components/Navigation';
+import './App.css';
 
 const theme = createTheme({
   palette: {
-    mode: 'light',
+    mode: 'dark',
     primary: {
-      main: '#1976d2',
+      main: '#9c27b0',
     },
     secondary: {
-      main: '#dc004e',
+      main: '#f50057',
     },
   },
 });
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <ConfigForm />
-    </ThemeProvider>
+    <BrowserRouter>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <div className="app-wrapper">
+          <Navigation />
+          <div className="content-container">
+            <Routes>
+              <Route path="/" element={
+                <div className="form-wrapper">
+                  <ConfigForm />
+                </div>
+              } />
+              <Route path="/tutorial" element={<Tutorial />} />
+            </Routes>
+          </div>
+        </div>
+      </ThemeProvider>
+    </BrowserRouter>
   );
 }
 

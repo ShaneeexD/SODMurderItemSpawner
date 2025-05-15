@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { 
-  Container, 
   Typography, 
   Paper, 
   Divider, 
@@ -316,18 +315,18 @@ const ConfigForm: React.FC = () => {
   };
   
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
+    <div className="form-container">
+      <Paper elevation={3} sx={{ p: 3, mb: 4, width: '100%', maxWidth: '800px' }}>
         <Typography variant="h4" component="h1" gutterBottom align="center">
           MurderItemSpawner Config Generator
         </Typography>
         <Typography variant="subtitle1" gutterBottom align="center" color="text.secondary">
-          Create JSON configurations for your MurderMO's
+          Create MIS JSON configurations for your custom cases
         </Typography>
       </Paper>
       
-      <Stack spacing={3}>
-        <Paper elevation={2} sx={{ p: 3 }}>
+      <Stack spacing={3} sx={{ width: '100%', alignItems: 'center' }}>
+        <Paper elevation={2} sx={{ p: 3, width: '100%', maxWidth: '800px' }}>
           <Typography variant="h6" gutterBottom>
             Basic Information
           </Typography>
@@ -354,7 +353,7 @@ const ConfigForm: React.FC = () => {
           </Stack>
         </Paper>
         
-        <Accordion defaultExpanded>
+        <Accordion defaultExpanded sx={{ width: '100%', maxWidth: '800px' }}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="h6">Event Trigger Settings</Typography>
           </AccordionSummary>
@@ -368,7 +367,7 @@ const ConfigForm: React.FC = () => {
           </AccordionDetails>
         </Accordion>
         
-        <Accordion defaultExpanded>
+        <Accordion defaultExpanded sx={{ width: '100%', maxWidth: '800px' }}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="h6">Item Settings</Typography>
           </AccordionSummary>
@@ -382,7 +381,7 @@ const ConfigForm: React.FC = () => {
           </AccordionDetails>
         </Accordion>
         
-        <Accordion defaultExpanded>
+        <Accordion defaultExpanded sx={{ width: '100%', maxWidth: '800px' }}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="h6">Location Settings</Typography>
           </AccordionSummary>
@@ -398,7 +397,7 @@ const ConfigForm: React.FC = () => {
         
         {/* Furniture settings are now handled in the LocationSelector component */}
         
-        <Accordion defaultExpanded>
+        <Accordion defaultExpanded sx={{ width: '100%', maxWidth: '800px' }}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="h6">Ownership Settings</Typography>
           </AccordionSummary>
@@ -412,7 +411,7 @@ const ConfigForm: React.FC = () => {
           </AccordionDetails>
         </Accordion>
         
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3, gap: 3 }}>
           <Stack direction="row" spacing={2}>
             <Button 
               variant="outlined" 
@@ -447,7 +446,7 @@ const ConfigForm: React.FC = () => {
           </Button>
         </Box>
         
-        <Box>
+        <Box sx={{ width: '100%', maxWidth: '800px' }}>
           <Divider sx={{ mb: 3 }} />
           <OutputDisplay rule={buildRule()} />
         </Box>
@@ -462,7 +461,7 @@ const ConfigForm: React.FC = () => {
           {messageText}
         </Alert>
       </Snackbar>
-    </Container>
+    </div>
   );
 };
 
