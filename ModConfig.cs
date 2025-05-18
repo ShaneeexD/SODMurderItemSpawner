@@ -187,5 +187,8 @@ namespace MurderItemSpawner
         public bool UseMultipleOwners { get; set; } = false;
         public List<BelongsTo> Owners { get; set; } = new List<BelongsTo>();
 
+        // Spawn control options
+        public bool OnlySpawnOnce { get; set; } = false;
+
     }
 }

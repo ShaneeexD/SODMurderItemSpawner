@@ -30,11 +30,22 @@ namespace MurderItemSpawner
 
         // Dictionary to track which rules have been triggered
         private Dictionary<string, bool> triggeredRules = new Dictionary<string, bool>();
+        
+        // Dictionary to track spawned items (ruleName -> hasBeenSpawned)
+        private Dictionary<string, bool> spawnedItems = new Dictionary<string, bool>();
 
         // Private constructor
         private ConfigManager()
         {
             LoadConfig();
+        }
+        
+        // Reset tracking dictionaries for a new murder case
+        public void ResetTracking()
+        {
+            Plugin.LogDebug("Resetting item spawn tracking for new murder case");
+            triggeredRules.Clear();
+            spawnedItems.Clear();
         }
 
         // Load all configurations from files
@@ -167,9 +178,30 @@ namespace MurderItemSpawner
 
                 foreach (var rule in config.SpawnRules)
                 {
-                    // Skip if rule is disabled or already triggered
-                    if (!rule.Enabled || triggeredRules.ContainsKey(rule.Name) && triggeredRules[rule.Name])
+                    // Skip if rule is disabled
+                    if (!rule.Enabled)
                         continue;
+                        
+                    // If OnlySpawnOnce is true, check if any event has already triggered this rule
+                    if (rule.OnlySpawnOnce)
+                    {
+                        bool alreadyTriggered = false;
+                        foreach (string triggerEvent in rule.TriggerEvents)
+                        {
+                            string checkKey = $"{rule.Name}_{triggerEvent}";
+                            if (triggeredRules.ContainsKey(checkKey) && triggeredRules[checkKey])
+                            {
+                                alreadyTriggered = true;
+                                break;
+                            }
+                        }
+                        
+                        if (alreadyTriggered)
+                        {
+                            Plugin.LogDebug($"Skipping rule '{rule.Name}' for event '{eventName}' because it has already been triggered (OnlySpawnOnce=true)");
+                            continue;
+                        }
+                    }
 
                     // Check if this rule should be triggered
                     if (rule.TriggerEvents.Contains(eventName) && 
@@ -184,8 +216,27 @@ namespace MurderItemSpawner
                         // Schedule the spawn with the specified delay
                         SpawnItem(rule);
                         
-                        // Mark as triggered
-                        triggeredRules[rule.Name] = true;
+                        // Always mark the current event as triggered for this rule
+                        // This prevents the same event from triggering the rule multiple times
+                        string currentEventKey = $"{rule.Name}_{eventName}";
+                        triggeredRules[currentEventKey] = true;
+                        Plugin.LogDebug($"Rule '{rule.Name}' marked as triggered for event '{eventName}'");
+                        
+                        // If OnlySpawnOnce is true, also mark all other trigger events for this rule
+                        if (rule.OnlySpawnOnce)
+                        {
+                            // Mark all other possible trigger events for this rule as triggered
+                            foreach (string triggerEvent in rule.TriggerEvents)
+                            {
+                                // Skip the current event as it's already marked above
+                                if (triggerEvent == eventName)
+                                    continue;
+                                    
+                                string triggerKey = $"{rule.Name}_{triggerEvent}";
+                                triggeredRules[triggerKey] = true;
+                                Plugin.LogDebug($"Rule '{rule.Name}' also marked as triggered for event '{triggerEvent}' (OnlySpawnOnce=true)");
+                            }
+                        }
                     }
                 }
             }
@@ -196,6 +247,13 @@ namespace MurderItemSpawner
         {
             try
             {
+                // Check if this item should only be spawned once and has already been spawned
+                if (rule.OnlySpawnOnce && spawnedItems.ContainsKey(rule.Name) && spawnedItems[rule.Name])
+                {
+                    Plugin.LogDebug($"Skipping spawn for rule '{rule.Name}': Item has already been spawned once");
+                    return;
+                }
+
                 // Get the item owner based on the BelongsTo property
                 Human itemOwner = GetOwner(rule.BelongsTo);
                 if (itemOwner == null)
@@ -419,6 +477,13 @@ namespace MurderItemSpawner
                                 );
                             }
                             break;
+                }
+                
+                // Mark the item as spawned if OnlySpawnOnce is enabled
+                if (rule.OnlySpawnOnce)
+                {
+                    spawnedItems[rule.Name] = true;
+                    Plugin.LogDebug($"Marked item from rule '{rule.Name}' as spawned (OnlySpawnOnce=true)");
                 }
             }
             catch (Exception ex)

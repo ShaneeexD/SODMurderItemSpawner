@@ -324,6 +324,9 @@ namespace MurderItemSpawner
                 
                 // Check if any rules should be triggered for this event
                 ConfigManager.Instance.CheckRulesForEvent("OnCaseSolved", murderType);
+                
+                // Reset tracking for the next murder case
+                ConfigManager.Instance.ResetTracking();
             }
             catch (Exception ex)
             {
