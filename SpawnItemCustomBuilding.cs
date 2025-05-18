@@ -30,7 +30,8 @@ namespace MurderItemSpawner
             string customSubRoomName = null, string customRoomPreset = null, string customSubRoomPreset = null,
             List<string> customRoomNames = null, List<string> customRoomPresets = null,
             List<string> customSubRoomNames = null, List<string> customSubRoomPresets = null,
-            bool useFurniture = false, List<string> furniturePresets = null)
+            bool useFurniture = false, List<string> furniturePresets = null,
+            bool useMultipleOwners = false, List<BelongsTo> owners = null)
         {
             try
             {
@@ -38,7 +39,7 @@ namespace MurderItemSpawner
                 float randomValue = UnityEngine.Random.Range(0f, 1f);
                 if (randomValue > spawnChance)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Skipping spawn of {presetName} due to chance (roll: {randomValue}, needed: <= {spawnChance})");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Skipping spawn of {presetName} due to chance (roll: {randomValue}, needed: <= {spawnChance})");
                     return;
                 }
 
@@ -50,64 +51,64 @@ namespace MurderItemSpawner
                     return;
                 }
 
-                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Owner: {owner.name}, Recipient: {recipient.name}");
+                Plugin.LogDebug($"[SpawnItemCustomBuilding] Owner: {owner.name}, Recipient: {recipient.name}");
                 if (buildingPreset != null)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for building: {buildingPreset}, room name: {targetRoomName}");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Looking for building: {buildingPreset}, room name: {targetRoomName}");
                 }
                 else
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for any building with room name: {targetRoomName}");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Looking for any building with room name: {targetRoomName}");
                 }
                 
                 // Log floor names
                 if (customFloorNames != null && customFloorNames.Count > 0)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Using specific floor names: {string.Join(", ", customFloorNames)}");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Using specific floor names: {string.Join(", ", customFloorNames)}");
                 }
                 else
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] No specific floor names provided, checking all floors");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] No specific floor names provided, checking all floors");
                 }
                 
                 // Log room names
                 if (!string.IsNullOrEmpty(targetRoomName))
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for room with name: {targetRoomName}");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Looking for room with name: {targetRoomName}");
                 }
                 if (customRoomNames != null && customRoomNames.Count > 0)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for rooms with names from list: {string.Join(", ", customRoomNames)}");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Looking for rooms with names from list: {string.Join(", ", customRoomNames)}");
                 }
                 
                 // Log room presets
                 if (!string.IsNullOrEmpty(customRoomPreset))
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for room with preset: {customRoomPreset}");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Looking for room with preset: {customRoomPreset}");
                 }
                 if (customRoomPresets != null && customRoomPresets.Count > 0)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for rooms with presets from list: {string.Join(", ", customRoomPresets)}");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Looking for rooms with presets from list: {string.Join(", ", customRoomPresets)}");
                 }
                 
                 // Log sub-room names
                 if (!string.IsNullOrEmpty(customSubRoomName))
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for sub-room with name: {customSubRoomName}");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Looking for sub-room with name: {customSubRoomName}");
                 }
                 if (customSubRoomNames != null && customSubRoomNames.Count > 0)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for sub-rooms with names from list: {string.Join(", ", customSubRoomNames)}");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Looking for sub-rooms with names from list: {string.Join(", ", customSubRoomNames)}");
                 }
                 
                 // Log sub-room presets
                 if (!string.IsNullOrEmpty(customSubRoomPreset))
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for sub-room with preset: {customSubRoomPreset}");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Looking for sub-room with preset: {customSubRoomPreset}");
                 }
                 if (customSubRoomPresets != null && customSubRoomPresets.Count > 0)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for sub-rooms with presets from list: {string.Join(", ", customSubRoomPresets)}");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Looking for sub-rooms with presets from list: {string.Join(", ", customSubRoomPresets)}");
                 }
                 
                 // Log furniture options
@@ -115,23 +116,24 @@ namespace MurderItemSpawner
                 {
                     if (furniturePresets != null && furniturePresets.Count > 0)
                     {
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Using furniture for item placement. Looking for furniture presets: {string.Join(", ", furniturePresets)}");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] Using furniture for item placement. Looking for furniture presets: {string.Join(", ", furniturePresets)}");
                     }
                     else
                     {
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Using furniture for item placement, but no specific furniture presets provided. Will try to use any available furniture.");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] Using furniture for item placement, but no specific furniture presets provided. Will try to use any available furniture.");
                     }
                 }
                 else
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Using node-based placement (not using furniture).");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Using node-based placement (not using furniture).");
                 }
 
                 // Find the custom building and spawn the item
                 CoroutineHelper.StartCoroutine(SpawnItemInCustomBuildingCoroutine(interactablePresetItem, owner, recipient, presetName, 
                     targetRoomName, buildingPreset, customFloorNames, customSubRoomName, customRoomPreset, customSubRoomPreset,
                     customRoomNames, customRoomPresets, customSubRoomNames, customSubRoomPresets,
-                    useFurniture, furniturePresets));
+                    useFurniture, furniturePresets,
+                    useMultipleOwners, owners));
             }
             catch (Exception ex)
             {
@@ -189,7 +191,7 @@ namespace MurderItemSpawner
             return false;
         }
         
-        private static IEnumerator SpawnItemInCustomBuildingCoroutine(InteractablePreset itemPreset, Human owner, Human recipient, string itemNameForLog, string targetRoomName = null, string buildingPreset = null, List<string> customFloorNames = null, string customSubRoomName = null, string customRoomPreset = null, string customSubRoomPreset = null, List<string> customRoomNames = null, List<string> customRoomPresets = null, List<string> customSubRoomNames = null, List<string> customSubRoomPresets = null, bool useFurniture = false, List<string> furniturePresets = null)
+        private static IEnumerator SpawnItemInCustomBuildingCoroutine(InteractablePreset itemPreset, Human owner, Human recipient, string itemNameForLog, string targetRoomName = null, string buildingPreset = null, List<string> customFloorNames = null, string customSubRoomName = null, string customRoomPreset = null, string customSubRoomPreset = null, List<string> customRoomNames = null, List<string> customRoomPresets = null, List<string> customSubRoomNames = null, List<string> customSubRoomPresets = null, bool useFurniture = false, List<string> furniturePresets = null, bool useMultipleOwners = false, List<BelongsTo> owners = null)
             {
             List<NewRoom> matchingRooms = new List<NewRoom>();
             CityData cityData = CityData.Instance;
@@ -207,7 +209,7 @@ namespace MurderItemSpawner
                 if (building.rooms == null || building.rooms.Count == 0)
                 {
                     // Optional: Log if needed
-                    // Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Building {building.name ?? "(unnamed)"} has no rooms.");
+                    // Plugin.LogDebug($"[SpawnItemCustomBuilding] Building {building.name ?? "(unnamed)"} has no rooms.");
                     continue;
                 }
 
@@ -227,7 +229,7 @@ namespace MurderItemSpawner
                     if (roomName.Contains("controller", StringComparison.OrdinalIgnoreCase) || 
                         roomName.EndsWith("Null", StringComparison.OrdinalIgnoreCase))
                     {
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Filtering out room: {roomName} (standard exclusion)");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] Filtering out room: {roomName} (standard exclusion)");
                         continue;
                     }
 
@@ -247,7 +249,7 @@ namespace MurderItemSpawner
                         if (!string.IsNullOrEmpty(targetRoomName) && roomName.Contains(targetRoomName, StringComparison.OrdinalIgnoreCase))
                         {
                             preliminaryMatch = true;
-                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Preliminary match on Room Name: {roomName} contains {targetRoomName}");
+                            Plugin.LogDebug($"[SpawnItemCustomBuilding] Preliminary match on Room Name: {roomName} contains {targetRoomName}");
                         }
                         // List of room names check
                         else if (customRoomNames != null && customRoomNames.Count > 0)
@@ -257,7 +259,7 @@ namespace MurderItemSpawner
                                 if (!string.IsNullOrEmpty(customRoomName) && roomName.Contains(customRoomName, StringComparison.OrdinalIgnoreCase))
                                 {
                                     preliminaryMatch = true;
-                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Preliminary match on Room Name (list): {roomName} contains {customRoomName}");
+                                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Preliminary match on Room Name (list): {roomName} contains {customRoomName}");
                                     break;
                                 }
                             }
@@ -266,7 +268,7 @@ namespace MurderItemSpawner
                         else if (!string.IsNullOrEmpty(customRoomPreset) && presetName.Contains(customRoomPreset, StringComparison.OrdinalIgnoreCase))
                         {
                             preliminaryMatch = true;
-                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Preliminary match on Room Preset: {presetName} contains {customRoomPreset}");
+                            Plugin.LogDebug($"[SpawnItemCustomBuilding] Preliminary match on Room Preset: {presetName} contains {customRoomPreset}");
                         }
                         // List of room presets check
                         else if (customRoomPresets != null && customRoomPresets.Count > 0)
@@ -276,7 +278,7 @@ namespace MurderItemSpawner
                                 if (!string.IsNullOrEmpty(roomPreset) && presetName.Contains(roomPreset, StringComparison.OrdinalIgnoreCase))
                                 {
                                     preliminaryMatch = true;
-                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Preliminary match on Room Preset (list): {presetName} contains {roomPreset}");
+                                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Preliminary match on Room Preset (list): {presetName} contains {roomPreset}");
                                     break;
                                 }
                             }
@@ -289,7 +291,7 @@ namespace MurderItemSpawner
                                 if (floorName.Contains(customFloorName, StringComparison.OrdinalIgnoreCase))
                                 {
                                     preliminaryMatch = true;
-                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Preliminary match on Floor Name: {floorName} contains {customFloorName}");
+                                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Preliminary match on Floor Name: {floorName} contains {customFloorName}");
                                     break; 
                                 }
                             }
@@ -321,35 +323,35 @@ namespace MurderItemSpawner
                         // Check single string room preset (legacy)
                         if (!string.IsNullOrEmpty(customRoomPreset))
                         {
-                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Detailed Room preset check - Room preset: {presetName}, Looking for: '{customRoomPreset}'");
+                            Plugin.LogDebug($"[SpawnItemCustomBuilding] Detailed Room preset check - Room preset: {presetName}, Looking for: '{customRoomPreset}'");
                             if (presetName.Contains(customRoomPreset, StringComparison.OrdinalIgnoreCase))
                             {
                                 isRoomPresetMatch = true;
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ Detailed ROOM PRESET MATCH: Room preset '{presetName}' contains '{customRoomPreset}'");
+                                Plugin.LogDebug($"[SpawnItemCustomBuilding] ✓ Detailed ROOM PRESET MATCH: Room preset '{presetName}' contains '{customRoomPreset}'");
                             }
                             else
                             {
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ Detailed NO ROOM PRESET MATCH: Room preset '{presetName}' does not contain '{customRoomPreset}'");
+                                Plugin.LogDebug($"[SpawnItemCustomBuilding] ✗ Detailed NO ROOM PRESET MATCH: Room preset '{presetName}' does not contain '{customRoomPreset}'");
                             }
                         }
                         
                         // Check list of room presets
                         if (!isRoomPresetMatch && customRoomPresets != null && customRoomPresets.Count > 0)
                         {
-                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Detailed Room preset list check - Room preset: {presetName}, Looking for matches in list of {customRoomPresets.Count} presets");
+                            Plugin.LogDebug($"[SpawnItemCustomBuilding] Detailed Room preset list check - Room preset: {presetName}, Looking for matches in list of {customRoomPresets.Count} presets");
                             foreach (string roomPreset in customRoomPresets)
                             {
                                 if (!string.IsNullOrEmpty(roomPreset) && presetName.Contains(roomPreset, StringComparison.OrdinalIgnoreCase))
                                 {
                                     isRoomPresetMatch = true;
-                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ Detailed ROOM PRESET LIST MATCH: Room preset '{presetName}' contains '{roomPreset}'");
+                                    Plugin.LogDebug($"[SpawnItemCustomBuilding] ✓ Detailed ROOM PRESET LIST MATCH: Room preset '{presetName}' contains '{roomPreset}'");
                                     break;
                                 }
                             }
                             
                             if (!isRoomPresetMatch)
                             {
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ Detailed NO ROOM PRESET LIST MATCH: Room preset '{presetName}' does not match any preset in the list");
+                                Plugin.LogDebug($"[SpawnItemCustomBuilding] ✗ Detailed NO ROOM PRESET LIST MATCH: Room preset '{presetName}' does not match any preset in the list");
                             }
                         }
                     }
@@ -358,22 +360,22 @@ namespace MurderItemSpawner
                     if (customFloorNames == null || customFloorNames.Count == 0)
                     {
                         isFloorMatch = true; // No specific floor requested
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ Detailed ANY FLOOR: Using floor '{floorName}' (no specific floor requested)");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] ✓ Detailed ANY FLOOR: Using floor '{floorName}' (no specific floor requested)");
                     }
                     else
                     {
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Detailed Floor check - Floor: {floorName}, Looking for: {string.Join(", ", customFloorNames)}");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] Detailed Floor check - Floor: {floorName}, Looking for: {string.Join(", ", customFloorNames)}");
                         foreach (string customFloorName in customFloorNames)
                         {
                             // Using simple Contains for now, retain original capital letter check if needed
                             if (floorName.Contains(customFloorName, StringComparison.OrdinalIgnoreCase))
                             {
                                 isFloorMatch = true;
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ Detailed FLOOR MATCH: '{floorName}' contains '{customFloorName}'");
+                                Plugin.LogDebug($"[SpawnItemCustomBuilding] ✓ Detailed FLOOR MATCH: '{floorName}' contains '{customFloorName}'");
                                 break;
                             }
                         }
-                         if (!isFloorMatch) Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ Detailed NO FLOOR MATCH: Floor '{floorName}' does not match any requested floor.");
+                         if (!isFloorMatch) Plugin.LogDebug($"[SpawnItemCustomBuilding] ✗ Detailed NO FLOOR MATCH: Floor '{floorName}' does not match any requested floor.");
                     }
 
                     // Detailed Room Name Check (only if specified)
@@ -383,7 +385,7 @@ namespace MurderItemSpawner
                     if (!roomNameSpecified)
                     {
                         isRoomMatch = true; // No specific room name requested
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ Detailed ANY ROOM: Using room '{roomName}' (no specific room requested)");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] ✓ Detailed ANY ROOM: Using room '{roomName}' (no specific room requested)");
                     }
                     else
                     {
@@ -392,35 +394,35 @@ namespace MurderItemSpawner
                         // Check single string room name (legacy)
                         if (!string.IsNullOrEmpty(targetRoomName))
                         {
-                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Detailed Room check - Room name: {roomName}, Looking for: '{targetRoomName}'");
+                            Plugin.LogDebug($"[SpawnItemCustomBuilding] Detailed Room check - Room name: {roomName}, Looking for: '{targetRoomName}'");
                             if (roomName.Contains(targetRoomName, StringComparison.OrdinalIgnoreCase))
                             {
                                 isRoomMatch = true;
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ Detailed ROOM MATCH: '{roomName}' contains '{targetRoomName}'");
+                                Plugin.LogDebug($"[SpawnItemCustomBuilding] ✓ Detailed ROOM MATCH: '{roomName}' contains '{targetRoomName}'");
                             }
                             else
                             {
-                               Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ Detailed NO ROOM MATCH: Room '{roomName}' does not contain '{targetRoomName}'");
+                               Plugin.LogDebug($"[SpawnItemCustomBuilding] ✗ Detailed NO ROOM MATCH: Room '{roomName}' does not contain '{targetRoomName}'");
                             }
                         }
                         
                         // Check list of room names
                         if (!isRoomMatch && customRoomNames != null && customRoomNames.Count > 0)
                         {
-                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Detailed Room name list check - Room name: {roomName}, Looking for matches in list of {customRoomNames.Count} names");
+                            Plugin.LogDebug($"[SpawnItemCustomBuilding] Detailed Room name list check - Room name: {roomName}, Looking for matches in list of {customRoomNames.Count} names");
                             foreach (string customRoomName in customRoomNames)
                             {
                                 if (!string.IsNullOrEmpty(customRoomName) && roomName.Contains(customRoomName, StringComparison.OrdinalIgnoreCase))
                                 {
                                     isRoomMatch = true;
-                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ Detailed ROOM NAME LIST MATCH: Room '{roomName}' contains '{customRoomName}'");
+                                    Plugin.LogDebug($"[SpawnItemCustomBuilding] ✓ Detailed ROOM NAME LIST MATCH: Room '{roomName}' contains '{customRoomName}'");
                                     break;
                                 }
                             }
                             
                             if (!isRoomMatch)
                             {
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ Detailed NO ROOM NAME LIST MATCH: Room '{roomName}' does not match any name in the list");
+                                Plugin.LogDebug($"[SpawnItemCustomBuilding] ✗ Detailed NO ROOM NAME LIST MATCH: Room '{roomName}' does not match any name in the list");
                             }
                         }
                     }
@@ -428,30 +430,30 @@ namespace MurderItemSpawner
                     // --- End Detailed Checks ---
 
                     // Log final check results before decision
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Final Check -> Room: {roomName}, Preset: {presetName}, Floor: {floorName}, Building: {buildingName} | RoomMatch: {isRoomMatch}, FloorMatch: {isFloorMatch}, PresetMatch: {isRoomPresetMatch}");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Final Check -> Room: {roomName}, Preset: {presetName}, Floor: {floorName}, Building: {buildingName} | RoomMatch: {isRoomMatch}, FloorMatch: {isFloorMatch}, PresetMatch: {isRoomPresetMatch}");
 
                     // Add room only if ALL relevant detailed checks passed
                     if (isRoomMatch && isFloorMatch && isRoomPresetMatch)
                     {
                         matchingRooms.Add(room);
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] *** FOUND MATCHING ROOM (passed all checks): {roomName} in {buildingName} ***");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] *** FOUND MATCHING ROOM (passed all checks): {roomName} in {buildingName} ***");
                     }
                     else
                     {
                          // Log why it failed if needed
-                         // Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Room {roomName} did not pass all detailed checks. Skipping.");
+                         // Plugin.LogDebug($"[SpawnItemCustomBuilding] Room {roomName} did not pass all detailed checks. Skipping.");
                     }
                     
                     // Batch processing yield
                     if (++processedCount % batchSize == 0)
                     {
                         yield return null; // Allow the game to continue running
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Processed {processedCount} rooms so far");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] Processed {processedCount} rooms so far");
                     }
                 } // End room loop
             } // End building loop
             
-            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Found {matchingRooms.Count} matching rooms after full scan");
+            Plugin.LogDebug($"[SpawnItemCustomBuilding] Found {matchingRooms.Count} matching rooms after full scan");
             if (matchingRooms.Count == 0)
             {
                 Plugin.Log.LogError($"[SpawnItemCustomBuilding] No matching rooms found for building preset: {buildingPreset}, room name: {targetRoomName}");
@@ -459,13 +461,13 @@ namespace MurderItemSpawner
             }
             int randomRoomIndex = UnityEngine.Random.Range(0, matchingRooms.Count);
             NewRoom selectedRoom = matchingRooms[randomRoomIndex];
-            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Selected room: {selectedRoom.name}");
+            Plugin.LogDebug($"[SpawnItemCustomBuilding] Selected room: {selectedRoom.name}");
             bool subRoomSpecified = !string.IsNullOrEmpty(customSubRoomName) || (customSubRoomNames != null && customSubRoomNames.Count > 0);
             bool subRoomRequired = false; // By default, sub-rooms are optional even when specified
             if (subRoomSpecified)
             {
                 string subRoomLogInfo = !string.IsNullOrEmpty(customSubRoomName) ? customSubRoomName : "from list";
-                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Looking for sub-room: {subRoomLogInfo}");
+                Plugin.LogDebug($"[SpawnItemCustomBuilding] Looking for sub-room: {subRoomLogInfo}");
                 string locationPrefix = "";
                 if (selectedRoom.gameLocation != null && 
                     selectedRoom.gameLocation.thisAsAddress != null && 
@@ -473,7 +475,7 @@ namespace MurderItemSpawner
                     !string.IsNullOrEmpty(selectedRoom.gameLocation.thisAsAddress.company.name))
                 {
                     locationPrefix = selectedRoom.gameLocation.thisAsAddress.company.name;
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Using company name as prefix: {locationPrefix}");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Using company name as prefix: {locationPrefix}");
                 }
                 else if (!string.IsNullOrEmpty(selectedRoom.name))
                 {
@@ -481,7 +483,7 @@ namespace MurderItemSpawner
                     if (lastSpaceIndex > 0)
                     {
                         locationPrefix = selectedRoom.name.Substring(0, lastSpaceIndex);
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Extracted prefix from room name: {locationPrefix}");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] Extracted prefix from room name: {locationPrefix}");
                     }
                 }
                 if (!string.IsNullOrEmpty(locationPrefix))
@@ -496,7 +498,7 @@ namespace MurderItemSpawner
                             if (room.name.Contains("controller", StringComparison.OrdinalIgnoreCase) || 
                                 room.name.EndsWith("Null", StringComparison.OrdinalIgnoreCase))
                             {
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Filtering out sub-room: {room.name} (contains 'controller' or ends with 'Null')");
+                                Plugin.LogDebug($"[SpawnItemCustomBuilding] Filtering out sub-room: {room.name} (contains 'controller' or ends with 'Null')");
                                 continue;
                             }
                             bool isMatch = false;
@@ -514,7 +516,7 @@ namespace MurderItemSpawner
                             else if (customSubRoomNames != null && customSubRoomNames.Count > 0)
                             {
                                 // We'll handle this in the matching section below
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Using list of {customSubRoomNames.Count} sub-room names for matching");
+                                Plugin.LogDebug($"[SpawnItemCustomBuilding] Using list of {customSubRoomNames.Count} sub-room names for matching");
                             }
                                                        
                             if (subRoomPresetSpecified)
@@ -525,35 +527,35 @@ namespace MurderItemSpawner
                                 // Check single string sub-room preset (legacy)
                                 if (customSubRoomPreset != null && !string.IsNullOrEmpty(customSubRoomPreset))
                                 {
-                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Sub-room preset check - Room preset: {roomPresetName}, Looking for: '{customSubRoomPreset}'");
+                                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Sub-room preset check - Room preset: {roomPresetName}, Looking for: '{customSubRoomPreset}'");
                                     if (roomPresetName.Contains(customSubRoomPreset, StringComparison.OrdinalIgnoreCase))
                                     {
                                         isSubRoomPresetMatch = true;
-                                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM PRESET MATCH: Room preset '{roomPresetName}' contains '{customSubRoomPreset}'");
+                                        Plugin.LogDebug($"[SpawnItemCustomBuilding] ✓ SUB-ROOM PRESET MATCH: Room preset '{roomPresetName}' contains '{customSubRoomPreset}'");
                                     }
                                     else
                                     {
-                                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ NO SUB-ROOM PRESET MATCH: Room preset '{roomPresetName}' does not contain '{customSubRoomPreset}'");
+                                        Plugin.LogDebug($"[SpawnItemCustomBuilding] ✗ NO SUB-ROOM PRESET MATCH: Room preset '{roomPresetName}' does not contain '{customSubRoomPreset}'");
                                     }
                                 }
                                 
                                 // Check list of sub-room presets
                                 if (!isSubRoomPresetMatch && customSubRoomPresets != null && customSubRoomPresets.Count > 0)
                                 {
-                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Sub-room preset list check - Room preset: {roomPresetName}, Looking for matches in list of {customSubRoomPresets.Count} presets");
+                                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Sub-room preset list check - Room preset: {roomPresetName}, Looking for matches in list of {customSubRoomPresets.Count} presets");
                                     foreach (string subRoomPreset in customSubRoomPresets)
                                     {
                                         if (!string.IsNullOrEmpty(subRoomPreset) && roomPresetName.Contains(subRoomPreset, StringComparison.OrdinalIgnoreCase))
                                         {
                                             isSubRoomPresetMatch = true;
-                                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM PRESET LIST MATCH: Room preset '{roomPresetName}' contains '{subRoomPreset}'");
+                                            Plugin.LogDebug($"[SpawnItemCustomBuilding] ✓ SUB-ROOM PRESET LIST MATCH: Room preset '{roomPresetName}' contains '{subRoomPreset}'");
                                             break;
                                         }
                                     }
                                     
                                     if (!isSubRoomPresetMatch)
                                     {
-                                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ NO SUB-ROOM PRESET LIST MATCH: Room preset '{roomPresetName}' does not match any preset in the list");
+                                        Plugin.LogDebug($"[SpawnItemCustomBuilding] ✗ NO SUB-ROOM PRESET LIST MATCH: Room preset '{roomPresetName}' does not match any preset in the list");
                                     }
                                 }
                             }
@@ -565,20 +567,20 @@ namespace MurderItemSpawner
                                     if (room.name.Contains(customSubRoomName, StringComparison.OrdinalIgnoreCase))
                                     {
                                         isMatch = true;
-                                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM CAPITAL MATCH: Found sub-room '{room.name}' containing '{customSubRoomName}'");
+                                        Plugin.LogDebug($"[SpawnItemCustomBuilding] ✓ SUB-ROOM CAPITAL MATCH: Found sub-room '{room.name}' containing '{customSubRoomName}'");
                                     }
                                 }
                                 else if (room.name.Contains(customSubRoomName, StringComparison.OrdinalIgnoreCase))
                                 {
                                     isMatch = true;
-                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM LOWERCASE MATCH: Found sub-room '{room.name}' containing '{customSubRoomName}'");
+                                    Plugin.LogDebug($"[SpawnItemCustomBuilding] ✓ SUB-ROOM LOWERCASE MATCH: Found sub-room '{room.name}' containing '{customSubRoomName}'");
                                 }
                                 
                                 if (!isMatch && room.name.Contains(locationPrefix, StringComparison.OrdinalIgnoreCase) && 
                                     room.name.Contains(customSubRoomName, StringComparison.OrdinalIgnoreCase))
                                 {
                                     isMatch = true;
-                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] SUB-ROOM PREFIX MATCH: Found sub-room '{room.name}' containing both prefix '{locationPrefix}' and '{customSubRoomName}'");
+                                    Plugin.LogDebug($"[SpawnItemCustomBuilding] SUB-ROOM PREFIX MATCH: Found sub-room '{room.name}' containing both prefix '{locationPrefix}' and '{customSubRoomName}'");
                                 }
                             }
                             
@@ -597,14 +599,14 @@ namespace MurderItemSpawner
                                         if (room.name.Contains(subRoomName, StringComparison.OrdinalIgnoreCase))
                                         {
                                             isMatch = true;
-                                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM LIST CAPITAL MATCH: Found sub-room '{room.name}' containing '{subRoomName}'");
+                                            Plugin.LogDebug($"[SpawnItemCustomBuilding] ✓ SUB-ROOM LIST CAPITAL MATCH: Found sub-room '{room.name}' containing '{subRoomName}'");
                                             break;
                                         }
                                     }
                                     else if (room.name.Contains(subRoomName, StringComparison.OrdinalIgnoreCase))
                                     {
                                         isMatch = true;
-                                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✓ SUB-ROOM LIST LOWERCASE MATCH: Found sub-room '{room.name}' containing '{subRoomName}'");
+                                        Plugin.LogDebug($"[SpawnItemCustomBuilding] ✓ SUB-ROOM LIST LOWERCASE MATCH: Found sub-room '{room.name}' containing '{subRoomName}'");
                                         break;
                                     }
                                     
@@ -612,30 +614,30 @@ namespace MurderItemSpawner
                                         room.name.Contains(subRoomName, StringComparison.OrdinalIgnoreCase))
                                     {
                                         isMatch = true;
-                                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] SUB-ROOM LIST PREFIX MATCH: Found sub-room '{room.name}' containing both prefix '{locationPrefix}' and '{subRoomName}'");
+                                        Plugin.LogDebug($"[SpawnItemCustomBuilding] SUB-ROOM LIST PREFIX MATCH: Found sub-room '{room.name}' containing both prefix '{locationPrefix}' and '{subRoomName}'");
                                         break;
                                     }
                                 }
                                 
                                 if (!isMatch)
                                 {
-                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] ✗ NO SUB-ROOM LIST MATCH: Room '{room.name}' does not match any name in the list");
+                                    Plugin.LogDebug($"[SpawnItemCustomBuilding] ✗ NO SUB-ROOM LIST MATCH: Room '{room.name}' does not match any name in the list");
                                 }
                             }
                             if (isMatch && isSubRoomPresetMatch)
                             {
                                 subRooms.Add(room);
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] *** FOUND MATCHING SUB-ROOM: {room.name} ***");
+                                Plugin.LogDebug($"[SpawnItemCustomBuilding] *** FOUND MATCHING SUB-ROOM: {room.name} ***");
                             }
                             else if (isMatch && !isSubRoomPresetMatch)
                             {
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Sub-room '{room.name}' matches name but not preset. Skipping.");
+                                Plugin.LogDebug($"[SpawnItemCustomBuilding] Sub-room '{room.name}' matches name but not preset. Skipping.");
                             }
                             // Only yield after processing a batch of rooms
                             if (++processedCount % 10 == 0)
                             {
                                 yield return null; // Allow the game to continue running
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Processed {processedCount} sub-rooms so far");
+                                Plugin.LogDebug($"[SpawnItemCustomBuilding] Processed {processedCount} sub-rooms so far");
                             }
                         }
                         if (subRooms.Count > 0)
@@ -643,14 +645,14 @@ namespace MurderItemSpawner
                             // If we found matching sub-rooms, use one of them
                             int randomSubRoomIndex = UnityEngine.Random.Range(0, subRooms.Count);
                             selectedRoom = subRooms[randomSubRoomIndex];
-                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Selected sub-room: {selectedRoom.name}");
+                            Plugin.LogDebug($"[SpawnItemCustomBuilding] Selected sub-room: {selectedRoom.name}");
                         }
                         else if (!subRoomRequired)
                         {
                             // If sub-rooms are optional (default behavior), use the original room
                             string subRoomSearchInfo = !string.IsNullOrEmpty(customSubRoomName) ? $"'{customSubRoomName}'" : 
                                                       (customSubRoomNames != null && customSubRoomNames.Count > 0) ? $"list of {customSubRoomNames.Count} sub-room names" : "(no sub-room specified)";
-                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] No matching sub-rooms found for {subRoomSearchInfo} in building with prefix '{locationPrefix}'. Using original room instead (sub-rooms are optional).");
+                            Plugin.LogDebug($"[SpawnItemCustomBuilding] No matching sub-rooms found for {subRoomSearchInfo} in building with prefix '{locationPrefix}'. Using original room instead (sub-rooms are optional).");
                             // Keep using the originally selected room
                         }
                         else
@@ -674,7 +676,7 @@ namespace MurderItemSpawner
             
             if (useFurniture && selectedRoom != null)
             {
-                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Attempting to find furniture in room {selectedRoom.name} for item placement");
+                Plugin.LogDebug($"[SpawnItemCustomBuilding] Attempting to find furniture in room {selectedRoom.name} for item placement");
                 
                 // Get all furniture in the room
                 List<FurnitureLocation> matchingFurniture = new List<FurnitureLocation>();
@@ -698,7 +700,7 @@ namespace MurderItemSpawner
                                 if (furnitureName.Contains(presetName, StringComparison.OrdinalIgnoreCase))
                                 {
                                     isMatch = true;
-                                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Found matching furniture: {furnitureName} contains '{presetName}'");
+                                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Found matching furniture: {furnitureName} contains '{presetName}'");
                                     break;
                                 }
                             }
@@ -757,26 +759,26 @@ namespace MurderItemSpawner
                             if (!alreadyUsed)
                             {
                                 usedFurniture = true;
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Will place item on furniture: {selectedFurniture.furniture.name}, using subobject index: {suitableSubObjects.IndexOf(selectedSubObject)}");
+                                Plugin.LogDebug($"[SpawnItemCustomBuilding] Will place item on furniture: {selectedFurniture.furniture.name}, using subobject index: {suitableSubObjects.IndexOf(selectedSubObject)}");
                             }
                             else
                             {
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Selected subobject is already used by another interactable. Will try node placement instead.");
+                                Plugin.LogDebug($"[SpawnItemCustomBuilding] Selected subobject is already used by another interactable. Will try node placement instead.");
                             }
                         }
                         else
                         {
-                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] No suitable subobjects found on furniture {selectedFurniture.furniture.name}. Will try node placement instead.");
+                            Plugin.LogDebug($"[SpawnItemCustomBuilding] No suitable subobjects found on furniture {selectedFurniture.furniture.name}. Will try node placement instead.");
                         }
                     }
                     else
                     {
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Furniture {selectedFurniture.furniture.name} has no subobjects. Will try node placement instead.");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] Furniture {selectedFurniture.furniture.name} has no subobjects. Will try node placement instead.");
                     }
                 }
                 else
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] No matching furniture found in room {selectedRoom.name}. Will try node placement instead.");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] No matching furniture found in room {selectedRoom.name}. Will try node placement instead.");
                 }
             }
             
@@ -786,7 +788,7 @@ namespace MurderItemSpawner
             // This is a second attempt in case the first one failed
             if (!usedFurniture && useFurniture && selectedRoom != null && selectedRoom.individualFurniture != null && selectedRoom.individualFurniture.Count > 0)
             {
-                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Attempting to find furniture in room {selectedRoom.name} for item placement");
+                Plugin.LogDebug($"[SpawnItemCustomBuilding] Attempting to find furniture in room {selectedRoom.name} for item placement");
                 
                 // Get all furniture in the room
                 List<FurnitureLocation> matchingFurniture = new List<FurnitureLocation>();
@@ -808,7 +810,7 @@ namespace MurderItemSpawner
                             if (furnitureName.Contains(presetName, StringComparison.OrdinalIgnoreCase))
                             {
                                 isMatch = true;
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Found matching furniture: {furnitureName} contains '{presetName}'");
+                                Plugin.LogDebug($"[SpawnItemCustomBuilding] Found matching furniture: {furnitureName} contains '{presetName}'");
                                 break;
                             }
                         }
@@ -866,26 +868,26 @@ namespace MurderItemSpawner
                             if (!alreadyUsed)
                             {
                                 usedFurniture = true;
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Will place item on furniture: {selectedFurniture.furniture.name}, using subobject index: {suitableSubObjects.IndexOf(selectedSubObject)}");
+                                Plugin.LogDebug($"[SpawnItemCustomBuilding] Will place item on furniture: {selectedFurniture.furniture.name}, using subobject index: {suitableSubObjects.IndexOf(selectedSubObject)}");
                             }
                             else
                             {
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Selected subobject is already used by another interactable. Will try node placement instead.");
+                                Plugin.LogDebug($"[SpawnItemCustomBuilding] Selected subobject is already used by another interactable. Will try node placement instead.");
                             }
                         }
                         else
                         {
-                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] No suitable subobjects found on furniture {selectedFurniture.furniture.name}. Will try node placement instead.");
+                            Plugin.LogDebug($"[SpawnItemCustomBuilding] No suitable subobjects found on furniture {selectedFurniture.furniture.name}. Will try node placement instead.");
                         }
                     }
                     else
                     {
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Furniture {selectedFurniture.furniture.name} has no subobjects. Will try node placement instead.");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] Furniture {selectedFurniture.furniture.name} has no subobjects. Will try node placement instead.");
                     }
                 }
                 else
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] No matching furniture found in room {selectedRoom.name}. Will try node placement instead.");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] No matching furniture found in room {selectedRoom.name}. Will try node placement instead.");
                 }
             }
             
@@ -896,7 +898,7 @@ namespace MurderItemSpawner
             // Skip node placement if we're using furniture
             if (usedFurniture)
             {
-                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Using furniture placement, skipping node placement");
+                Plugin.LogDebug($"[SpawnItemCustomBuilding] Using furniture placement, skipping node placement");
             }
             // Otherwise try to use node placement
             else if (selectedRoom.nodes != null && selectedRoom.nodes.Count > 0)
@@ -904,7 +906,7 @@ namespace MurderItemSpawner
                 List<NewNode> nodesList = new List<NewNode>();
                 foreach (var node in selectedRoom.nodes)
                 {
-                    if (node.isInaccessable || node.isObstacle) { Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Filtering out node: {node.name} (inaccessible)"); continue; }
+                    if (node.isInaccessable || node.isObstacle) { Plugin.LogDebug($"[SpawnItemCustomBuilding] Filtering out node: {node.name} (inaccessible)"); continue; }
                     nodesList.Add(node);
                 }
                 if (nodesList.Count > 0)
@@ -912,7 +914,7 @@ namespace MurderItemSpawner
                     int randomNodeIndex = UnityEngine.Random.Range(0, nodesList.Count);
                     placementNode = nodesList[randomNodeIndex];
                     spawnPosition = placementNode.position;
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Using node in room: {placementNode}");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Using node in room: {placementNode}");
                 }
                 else
                 {
@@ -928,7 +930,7 @@ namespace MurderItemSpawner
             spawnPosition.y += 0.00f;
             spawnPosition.x += UnityEngine.Random.Range(-0.1f, 0.1f);
             spawnPosition.z += UnityEngine.Random.Range(-0.1f, 0.1f);
-            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Calculated spawn position: {spawnPosition}");
+            Plugin.LogDebug($"[SpawnItemCustomBuilding] Calculated spawn position: {spawnPosition}");
             // Create the interactable based on whether we're using furniture or node placement
             Interactable spawnedItem = null;
             
@@ -937,7 +939,7 @@ namespace MurderItemSpawner
                 // If we're using furniture placement
                 if (usedFurniture && selectedFurniture != null && selectedSubObject != null)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Creating item '{itemNameForLog}' on furniture {selectedFurniture.furniture.name} in room {selectedRoom.name}");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Creating item '{itemNameForLog}' on furniture {selectedFurniture.furniture.name} in room {selectedRoom.name}");
                     
                     // Create a list of passed variables for the room ID
                     Il2CppSystem.Collections.Generic.List<Interactable.Passed> furniturePassedVars = new Il2CppSystem.Collections.Generic.List<Interactable.Passed>();
@@ -960,7 +962,7 @@ namespace MurderItemSpawner
                     
                     if (spawnedItem != null)
                     {
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Successfully spawned '{itemNameForLog}' on furniture {selectedFurniture.furniture.name} in {selectedRoom.name}");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] Successfully spawned '{itemNameForLog}' on furniture {selectedFurniture.furniture.name} in {selectedRoom.name}");
                     }
                     else
                     {
@@ -976,7 +978,7 @@ namespace MurderItemSpawner
                     
                     float randomYRotation = UnityEngine.Random.Range(0f, 360f);
                     Vector3 randomRotation = new Vector3(0f, randomYRotation, 0f);
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Using random rotation: {randomRotation}");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Using random rotation: {randomRotation}");
                     
                     spawnedItem = InteractableCreator.Instance.CreateWorldInteractable(
                         itemPreset,                // The item preset
@@ -994,8 +996,8 @@ namespace MurderItemSpawner
                     {
                         spawnedItem.node = placementNode;
                         spawnedItem.UpdateWorldPositionAndNode(true, true);
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Successfully created item in custom location at node");
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Item position: {spawnedItem.wPos}, node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] Successfully created item in custom location at node");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] Item position: {spawnedItem.wPos}, node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
                     }
                     else
                     {
@@ -1011,13 +1013,13 @@ namespace MurderItemSpawner
                 // Return the result
                 if (spawnedItem != null)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Item '{itemNameForLog}' successfully created in {selectedRoom.name}");
+                    Plugin.LogDebug($"[SpawnItemCustomBuilding] Item '{itemNameForLog}' successfully created in {selectedRoom.name}");
                     
                     // Log all furniture in the room for reference
                     if (selectedRoom != null && selectedRoom.individualFurniture != null && selectedRoom.individualFurniture.Count > 0)
                     {
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] === FURNITURE INVENTORY FOR ROOM: {selectedRoom.name} ===");
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Total furniture count: {selectedRoom.individualFurniture.Count}");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] === FURNITURE INVENTORY FOR ROOM: {selectedRoom.name} ===");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] Total furniture count: {selectedRoom.individualFurniture.Count}");
                         
                         Dictionary<string, int> furnitureTypes = new Dictionary<string, int>();
                         
@@ -1039,7 +1041,7 @@ namespace MurderItemSpawner
                                 
                                 // Log subobject information for each furniture
                                 int subObjectCount = furniture.furniture.subObjects != null ? furniture.furniture.subObjects.Count : 0;
-                                Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] Furniture: {furnitureName}, SubObjects: {subObjectCount}");
+                                Plugin.LogDebug($"[SpawnItemCustomBuilding] Furniture: {furnitureName}, SubObjects: {subObjectCount}");
                                 
                                 if (subObjectCount > 0)
                                 {
@@ -1061,23 +1063,23 @@ namespace MurderItemSpawner
                                             }
                                         }
                                         
-                                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding]   - SubObject {i}: {(isUsed ? "USED" : "AVAILABLE")}");
+                                        Plugin.LogDebug($"[SpawnItemCustomBuilding]   - SubObject {i}: {(isUsed ? "USED" : "AVAILABLE")}");
                                     }
                                 }
                             }
                         }
                         
                         // Log summary of furniture types
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] === FURNITURE SUMMARY ===");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] === FURNITURE SUMMARY ===");
                         foreach (var kvp in furnitureTypes.OrderByDescending(x => x.Value))
                         {
-                            Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] {kvp.Key}: {kvp.Value} instances");
+                            Plugin.LogDebug($"[SpawnItemCustomBuilding] {kvp.Key}: {kvp.Value} instances");
                         }
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] === END FURNITURE INVENTORY ===");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] === END FURNITURE INVENTORY ===");
                     }
                     else
                     {
-                        Plugin.Log.LogInfo($"[SpawnItemCustomBuilding] No furniture found in room {selectedRoom.name}");
+                        Plugin.LogDebug($"[SpawnItemCustomBuilding] No furniture found in room {selectedRoom.name}");
                     }
                 }
                 else

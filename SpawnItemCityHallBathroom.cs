@@ -24,7 +24,8 @@ namespace MurderItemSpawner
         }
 
         // Method to spawn an item in a City Hall bathroom
-        public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float SpawnChance)
+        public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float SpawnChance,
+            bool useMultipleOwners = false, List<BelongsTo> owners = null)
         {
             try
             {
@@ -32,7 +33,7 @@ namespace MurderItemSpawner
                 float randomValue = UnityEngine.Random.Range(0f, 1f);
                 if (randomValue > SpawnChance)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Skipping spawn of {presetName} due to chance (roll: {randomValue}, needed: <= {SpawnChance})");
+                    Plugin.LogDebug($"[SpawnItemCityHallBathroom] Skipping spawn of {presetName} due to chance (roll: {randomValue}, needed: <= {SpawnChance})");
                     return;
                 }
 
@@ -44,18 +45,47 @@ namespace MurderItemSpawner
                     return;
                 }
 
-                Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Owner: {owner.name}, Recipient: {recipient.name}");
+                Plugin.LogDebug($"[SpawnItemCityHallBathroom] Owner: {owner.name}, Recipient: {recipient.name}");
 
                 // Find the City Hall and spawn the item
                 Interactable spawnedItem = SpawnItemInCityHallBathroom(interactablePresetItem, owner, recipient, presetName);
                 
                 if (spawnedItem != null)
                 {
-                    // Ensure the item is owned by the correct person
-                    spawnedItem.SetOwner(owner);
+                    // Handle ownership based on whether multiple owners are used
+                    if (useMultipleOwners && owners != null && owners.Count > 0)
+                    {
+                        // Set the primary owner first
+                        spawnedItem.SetOwner(owner);
+                        
+                        // Add additional fingerprints for each owner in the list
+                        foreach (BelongsTo ownerType in owners)
+                        {
+                            // Get the Human object for this owner type
+                            Human additionalOwner = ConfigManager.Instance.GetOwnerForFingerprint(ownerType);
+                            
+                            if (additionalOwner != null)
+                            {
+                                Plugin.LogDebug($"[SpawnItemCityHallBathroom] Adding fingerprint for {ownerType}");
+                                // Add the fingerprint with default life parameter
+                                spawnedItem.AddNewDynamicFingerprint(additionalOwner, Interactable.PrintLife.timed);
+                            }
+                            else
+                            {
+                                Plugin.LogDebug($"[SpawnItemCityHallBathroom] Could not add fingerprint for {ownerType} - Human not found");
+                            }
+                        }
+                        
+                        Plugin.LogDebug($"[SpawnItemCityHallBathroom] Successfully added multiple owners to '{presetName}'");
+                    }
+                    else
+                    {
+                        // Standard single owner
+                        spawnedItem.SetOwner(owner);
+                    }
                     
-                    Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Successfully spawned '{presetName}' in City Hall bathroom. Item node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
-                    Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Item '{presetName}' final world position: {spawnedItem.wPos}");
+                    Plugin.LogDebug($"[SpawnItemCityHallBathroom] Successfully spawned '{presetName}' in City Hall bathroom. Item node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
+                    Plugin.LogDebug($"[SpawnItemCityHallBathroom] Item '{presetName}' final world position: {spawnedItem.wPos}");
                 }
                 else
                 {
@@ -77,7 +107,7 @@ namespace MurderItemSpawner
             
             // Get all locations in the city
             CityData cityData = CityData.Instance;
-            Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Searching for City Hall bathrooms");
+            Plugin.LogDebug($"[SpawnItemCityHallBathroom] Searching for City Hall bathrooms");
             
             // Find the Public bathrooms building
             NewAddress publicBathrooms = null;
@@ -90,7 +120,7 @@ namespace MurderItemSpawner
                 if (location.name != null && location.name.Contains("Public bathrooms"))
                 {
                     publicBathrooms = location.thisAsAddress;
-                    Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Found Public bathrooms building: {publicBathrooms.name}");
+                    Plugin.LogDebug($"[SpawnItemCityHallBathroom] Found Public bathrooms building: {publicBathrooms.name}");
                     break;
                 }
             }
@@ -98,7 +128,7 @@ namespace MurderItemSpawner
             // If we couldn't find the Public bathrooms building, try to find City Hall
             if (publicBathrooms == null)
             {
-                Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Public bathrooms building not found, looking for City Hall");
+                Plugin.LogDebug($"[SpawnItemCityHallBathroom] Public bathrooms building not found, looking for City Hall");
                 
                 foreach (var location in cityData.gameLocationDirectory)
                 {
@@ -107,7 +137,7 @@ namespace MurderItemSpawner
                     if (location.name != null && (location.name.Contains("City Hall") || location.name.Contains("CityHall")))
                     {
                         publicBathrooms = location.thisAsAddress;
-                        Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Found City Hall: {publicBathrooms.name}");
+                        Plugin.LogDebug($"[SpawnItemCityHallBathroom] Found City Hall: {publicBathrooms.name}");
                         break;
                     }
                 }
@@ -128,7 +158,7 @@ namespace MurderItemSpawner
             }
             
             // Find all bathrooms in the building
-            Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Checking {publicBathrooms.rooms.Count} rooms in {publicBathrooms.name}");
+            Plugin.LogDebug($"[SpawnItemCityHallBathroom] Checking {publicBathrooms.rooms.Count} rooms in {publicBathrooms.name}");
             
             for (int i = 0; i < publicBathrooms.rooms.Count; i++)
             {
@@ -171,7 +201,7 @@ namespace MurderItemSpawner
                 }
                 
                 // Log the room
-                Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Room: {roomName}, Preset: {presetName}, Floor: {floorName}, IsBathroom: {isBathroom}, IsCorrectFloor: {isCorrectFloor}");
+                Plugin.LogDebug($"[SpawnItemCityHallBathroom] Room: {roomName}, Preset: {presetName}, Floor: {floorName}, IsBathroom: {isBathroom}, IsCorrectFloor: {isCorrectFloor}");
                 
                 // Add bathrooms to our list
                 if (isBathroom)
@@ -181,7 +211,7 @@ namespace MurderItemSpawner
             }
             
             // Log summary
-            Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Found {bathroomRooms.Count} bathroom rooms in {publicBathrooms.name}");
+            Plugin.LogDebug($"[SpawnItemCityHallBathroom] Found {bathroomRooms.Count} bathroom rooms in {publicBathrooms.name}");
             
             // If we couldn't find any bathrooms, give up
             if (bathroomRooms.Count == 0)
@@ -194,7 +224,7 @@ namespace MurderItemSpawner
             int randomRoomIndex = UnityEngine.Random.Range(0, bathroomRooms.Count);
             NewRoom selectedRoom = bathroomRooms[randomRoomIndex];
             
-            Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Selected bathroom room: {selectedRoom.name}");
+            Plugin.LogDebug($"[SpawnItemCityHallBathroom] Selected bathroom room: {selectedRoom.name}");
             
             // Find a node in the bathroom room
             NewNode placementNode = null;
@@ -216,7 +246,7 @@ namespace MurderItemSpawner
                     int randomNodeIndex = UnityEngine.Random.Range(0, nodesList.Count);
                     placementNode = nodesList[randomNodeIndex];
                     spawnPosition = placementNode.position;
-                    Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Using node in bathroom room: {placementNode}");
+                    Plugin.LogDebug($"[SpawnItemCityHallBathroom] Using node in bathroom room: {placementNode}");
                 }
                 else
                 {
@@ -237,7 +267,7 @@ namespace MurderItemSpawner
             spawnPosition.x += UnityEngine.Random.Range(-0.1f, 0.1f);
             spawnPosition.z += UnityEngine.Random.Range(-0.1f, 0.1f);
 
-            Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Calculated spawn position: {spawnPosition}");
+            Plugin.LogDebug($"[SpawnItemCityHallBathroom] Calculated spawn position: {spawnPosition}");
 
             // Make sure we have a valid node for placement
             if (placementNode == null)
@@ -256,7 +286,7 @@ namespace MurderItemSpawner
                 float randomYRotation = UnityEngine.Random.Range(0f, 360f);
                 Vector3 randomRotation = new Vector3(0f, randomYRotation, 0f);
                 
-                Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Using random rotation: {randomRotation}");
+                Plugin.LogDebug($"[SpawnItemCityHallBathroom] Using random rotation: {randomRotation}");
                 
                 // Create the item in the bathroom cubicle
                 Interactable spawnedItem = InteractableCreator.Instance.CreateWorldInteractable(
@@ -279,8 +309,8 @@ namespace MurderItemSpawner
                     // Update the item's position and node
                     spawnedItem.UpdateWorldPositionAndNode(true, true);
                     
-                    Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Successfully created item in City Hall bathroom");
-                    Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Item position: {spawnedItem.wPos}, node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
+                    Plugin.LogDebug($"[SpawnItemCityHallBathroom] Successfully created item in City Hall bathroom");
+                    Plugin.LogDebug($"[SpawnItemCityHallBathroom] Item position: {spawnedItem.wPos}, node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
                     
                     return spawnedItem;
                 }

@@ -24,7 +24,8 @@ namespace MurderItemSpawner
         }
 
         // Method to spawn an item in a City Hall bathroom
-        public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float SpawnChance, List<string> HotelRooftopBarSubLocations)
+        public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float SpawnChance, List<string> HotelRooftopBarSubLocations,
+            bool useMultipleOwners = false, List<BelongsTo> owners = null)
         {
             try
             {
@@ -32,7 +33,7 @@ namespace MurderItemSpawner
                 float randomValue = UnityEngine.Random.Range(0f, 1f);
                 if (randomValue > SpawnChance)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemHotelRooftopBar] Skipping spawn of {presetName} due to chance (roll: {randomValue}, needed: <= {SpawnChance})");
+                    Plugin.LogDebug($"[SpawnItemHotelRooftopBar] Skipping spawn of {presetName} due to chance (roll: {randomValue}, needed: <= {SpawnChance})");
                     return;
                 }
 
@@ -44,18 +45,47 @@ namespace MurderItemSpawner
                     return;
                 }
 
-                Plugin.Log.LogInfo($"[SpawnItemHotelRooftopBar] Owner: {owner.name}, Recipient: {recipient.name}");
+                Plugin.LogDebug($"[SpawnItemHotelRooftopBar] Owner: {owner.name}, Recipient: {recipient.name}");
 
                 // Find the City Hall and spawn the item
                 Interactable spawnedItem = SpawnItemInHotelRooftopBar(interactablePresetItem, owner, recipient, presetName, HotelRooftopBarSubLocations);
                 
                 if (spawnedItem != null)
                 {
-                    // Ensure the item is owned by the correct person
-                    spawnedItem.SetOwner(owner);
+                    // Handle ownership based on whether multiple owners are used
+                    if (useMultipleOwners && owners != null && owners.Count > 0)
+                    {
+                        // Set the primary owner first
+                        spawnedItem.SetOwner(owner);
+                        
+                        // Add additional fingerprints for each owner in the list
+                        foreach (BelongsTo ownerType in owners)
+                        {
+                            // Get the Human object for this owner type
+                            Human additionalOwner = ConfigManager.Instance.GetOwnerForFingerprint(ownerType);
+                            
+                            if (additionalOwner != null)
+                            {
+                                Plugin.LogDebug($"[SpawnItemHotelRooftopBar] Adding fingerprint for {ownerType}");
+                                // Add the fingerprint with default life parameter
+                                spawnedItem.AddNewDynamicFingerprint(additionalOwner, Interactable.PrintLife.timed);
+                            }
+                            else
+                            {
+                                Plugin.LogDebug($"[SpawnItemHotelRooftopBar] Could not add fingerprint for {ownerType} - Human not found");
+                            }
+                        }
+                        
+                        Plugin.LogDebug($"[SpawnItemHotelRooftopBar] Successfully added multiple owners to '{presetName}'");
+                    }
+                    else
+                    {
+                        // Standard single owner
+                        spawnedItem.SetOwner(owner);
+                    }
                     
-                    Plugin.Log.LogInfo($"[SpawnItemHotelRooftopBar] Successfully spawned '{presetName}' in Hotel Rooftop Bar. Item node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
-                    Plugin.Log.LogInfo($"[SpawnItemHotelRooftopBar] Item '{presetName}' final world position: {spawnedItem.wPos}");
+                    Plugin.LogDebug($"[SpawnItemHotelRooftopBar] Successfully spawned '{presetName}' in Hotel Rooftop Bar. Item node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
+                    Plugin.LogDebug($"[SpawnItemHotelRooftopBar] Item '{presetName}' final world position: {spawnedItem.wPos}");
                 }
                 else
                 {
@@ -77,7 +107,7 @@ namespace MurderItemSpawner
             
             // Get all locations in the city
             CityData cityData = CityData.Instance;
-            Plugin.Log.LogInfo($"[SpawnItemHotelRooftopBar] Searching for Hotel Rooftop Bar");
+            Plugin.LogDebug($"[SpawnItemHotelRooftopBar] Searching for Hotel Rooftop Bar");
             
             // Search for the rooftop bar in all locations
             foreach (var location in cityData.gameLocationDirectory)
@@ -85,7 +115,7 @@ namespace MurderItemSpawner
                 if (location == null || location.thisAsAddress == null) continue;
                 
                 NewAddress building = location.thisAsAddress;
-                Plugin.Log.LogInfo($"[SpawnItemHotelRooftopBar] Checking location: {location.name}");
+                Plugin.LogDebug($"[SpawnItemHotelRooftopBar] Checking location: {location.name}");
                 
                 // Check if this building has rooms
                 if (building.rooms == null || building.rooms.Count == 0) continue;
@@ -113,19 +143,19 @@ namespace MurderItemSpawner
                     }
                     
                     // Log the room
-                    Plugin.Log.LogInfo($"[SpawnItemHotelRooftopBar] Room: {roomName}, Preset: {presetName}, Floor: {floorName}, Building: {buildingName}, IsRooftopBar: {isRooftopBar}");
+                    Plugin.LogDebug($"[SpawnItemHotelRooftopBar] Room: {roomName}, Preset: {presetName}, Floor: {floorName}, Building: {buildingName}, IsRooftopBar: {isRooftopBar}");
                     
                     // Add rooftop bar rooms to our list
                     if (isRooftopBar)
                     {
                         rooftopBarRooms.Add(room);
-                        Plugin.Log.LogInfo($"[SpawnItemHotelRooftopBar] *** FOUND ROOFTOP BAR: {roomName} in {buildingName} ***");
+                        Plugin.LogDebug($"[SpawnItemHotelRooftopBar] *** FOUND ROOFTOP BAR: {roomName} in {buildingName} ***");
                     }
                 }
             }
             
             // Log summary
-            Plugin.Log.LogInfo($"[SpawnItemHotelRooftopBar] Found {rooftopBarRooms.Count} Rooftop Bar rooms across all hotel locations");
+            Plugin.LogDebug($"[SpawnItemHotelRooftopBar] Found {rooftopBarRooms.Count} Rooftop Bar rooms across all hotel locations");
             
             // If we couldn't find any Rooftop Bar, give up
             if (rooftopBarRooms.Count == 0)
@@ -138,7 +168,7 @@ namespace MurderItemSpawner
             int randomRoomIndex = UnityEngine.Random.Range(0, rooftopBarRooms.Count);
             NewRoom selectedRoom = rooftopBarRooms[randomRoomIndex];
             
-            Plugin.Log.LogInfo($"[SpawnItemHotelRooftopBar] Selected Rooftop Bar room: {selectedRoom.name}");
+            Plugin.LogDebug($"[SpawnItemHotelRooftopBar] Selected Rooftop Bar room: {selectedRoom.name}");
             
             // Find a node in the Rooftop Bar room
             NewNode placementNode = null;
@@ -160,7 +190,7 @@ namespace MurderItemSpawner
                     int randomNodeIndex = UnityEngine.Random.Range(0, nodesList.Count);
                     placementNode = nodesList[randomNodeIndex];
                     spawnPosition = placementNode.position;
-                    Plugin.Log.LogInfo($"[SpawnItemHotelRooftopBar] Using node in Rooftop Bar room: {placementNode}");
+                    Plugin.LogDebug($"[SpawnItemHotelRooftopBar] Using node in Rooftop Bar room: {placementNode}");
                 }
                 else
                 {
@@ -181,7 +211,7 @@ namespace MurderItemSpawner
             spawnPosition.x += UnityEngine.Random.Range(-0.1f, 0.1f);
             spawnPosition.z += UnityEngine.Random.Range(-0.1f, 0.1f);
 
-            Plugin.Log.LogInfo($"[SpawnItemCityHallBathroom] Calculated spawn position: {spawnPosition}");
+            Plugin.LogDebug($"[SpawnItemCityHallBathroom] Calculated spawn position: {spawnPosition}");
 
             // Make sure we have a valid node for placement
             if (placementNode == null)
@@ -200,7 +230,7 @@ namespace MurderItemSpawner
                 float randomYRotation = UnityEngine.Random.Range(0f, 360f);
                 Vector3 randomRotation = new Vector3(0f, randomYRotation, 0f);
                 
-                Plugin.Log.LogInfo($"[SpawnItemHotelRooftopBar] Using random rotation: {randomRotation}");
+                Plugin.LogDebug($"[SpawnItemHotelRooftopBar] Using random rotation: {randomRotation}");
                 
                 // Create the item in the Rooftop Bar cubicle
                 Interactable spawnedItem = InteractableCreator.Instance.CreateWorldInteractable(
@@ -223,8 +253,8 @@ namespace MurderItemSpawner
                     // Update the item's position and node
                     spawnedItem.UpdateWorldPositionAndNode(true, true);
                     
-                    Plugin.Log.LogInfo($"[SpawnItemHotelRooftopBar] Successfully created item in Hotel Rooftop Bar");
-                    Plugin.Log.LogInfo($"[SpawnItemHotelRooftopBar] Item position: {spawnedItem.wPos}, node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
+                    Plugin.LogDebug($"[SpawnItemHotelRooftopBar] Successfully created item in Hotel Rooftop Bar");
+                    Plugin.LogDebug($"[SpawnItemHotelRooftopBar] Item position: {spawnedItem.wPos}, node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
                     
                     return spawnedItem;
                 }

@@ -246,7 +246,9 @@ namespace MurderItemSpawner
                             itemOwner,                    // Owner of the item
                             spawnLocationRecipient,        // Recipient used for spawn location reference
                             rule.ItemToSpawn,
-                            rule.SpawnChance
+                            rule.SpawnChance,
+                            rule.UseMultipleOwners,        // Whether to use multiple owners
+                            rule.Owners                    // List of additional owners
                         );
                         break;
                         
@@ -256,7 +258,9 @@ namespace MurderItemSpawner
                             itemOwner,                    // Owner of the item
                             spawnLocationRecipient,        // Recipient used for spawn location reference
                             rule.ItemToSpawn,
-                            rule.SpawnChance
+                            rule.SpawnChance,
+                            rule.UseMultipleOwners,        // Whether to use multiple owners
+                            rule.Owners                    // List of additional owners
                         );
                         break;
 
@@ -266,7 +270,10 @@ namespace MurderItemSpawner
                             itemOwner,                    // Owner of the item
                             spawnLocationRecipient,        // Recipient used for spawn location reference
                             rule.ItemToSpawn,
-                            rule.SpawnChance
+                            rule.SpawnChance,
+                            rule.SubLocationTypeBuildingEntrances,
+                            rule.UseMultipleOwners,        // Whether to use multiple owners
+                            rule.Owners                    // List of additional owners
                         );
                         break;
 
@@ -319,7 +326,7 @@ namespace MurderItemSpawner
                             return;
                         }
                         
-                        Plugin.Log.LogInfo($"[ConfigManager] Randomly selected location: {randomLocationType} for rule '{rule.Name}'");
+                       // Plugin.Log.LogInfo($"[ConfigManager] Randomly selected location: {randomLocationType} for rule '{rule.Name}'");
                         
                         // Create a copy of the rule with the randomly selected location
                         SpawnRule randomRule = new SpawnRule
@@ -391,13 +398,15 @@ namespace MurderItemSpawner
                                 rule.SpawnChance,              // Chance to spawn
                                 rule.CustomRoomName,           // Optional target room name
                                 rule.UseFurniture,             // Whether to use furniture for item placement
-                                rule.FurniturePresets          // List of furniture presets to look for
+                                rule.FurniturePresets,         // List of furniture presets to look for
+                                rule.UseMultipleOwners,        // Whether to use multiple owners
+                                rule.Owners                    // List of additional owners
                             );
                             break;
                             
                         default:
                             // Default to mailbox spawner for now
-                            Plugin.Log.LogInfo($"Using mailbox spawner for location type: {rule.SpawnLocation} (will be implemented in the future)");
+                            Plugin.Log.LogInfo($"Using mailbox spawner for location type by default: {rule.SpawnLocation}");
                             if (spawnLocation != null)
                             {
                                 SpawnItemMailbox.SpawnItemAtLocation(
@@ -420,6 +429,12 @@ namespace MurderItemSpawner
 
         // Get the recipient based on the rule type
         private Human GetOwner(BelongsTo belongsTo)
+        {
+            return GetOwnerForFingerprint(belongsTo);
+        }
+        
+        // Get the Human object for a BelongsTo enum value (for fingerprints)
+        public Human GetOwnerForFingerprint(BelongsTo belongsTo)
         {
             switch (belongsTo)
             {
@@ -504,7 +519,7 @@ namespace MurderItemSpawner
                 case SpawnLocationType.Doormat:
                     if (recipient != null && recipient.home != null)
                     {
-                        Plugin.Log.LogInfo($"[ConfigManager] Checking doormat location for {belongsTo.name} at {recipient.home.name}");
+                        //Plugin.Log.LogInfo($"[ConfigManager] Checking doormat location for {belongsTo.name} at {recipient.home.name}");
                         return null; // Just return null, actual spawning will happen in SpawnItem
                     }
                     
@@ -514,7 +529,7 @@ namespace MurderItemSpawner
                 case SpawnLocationType.HomeLobby:
                     if (recipient != null && recipient.home != null)
                     {
-                        Plugin.Log.LogInfo($"[ConfigManager] Checking lobby location for {belongsTo.name} at {recipient.home.name}");
+                        //Plugin.Log.LogInfo($"[ConfigManager] Checking lobby location for {belongsTo.name} at {recipient.home.name}");
                         return null; // Just return null, actual spawning will happen in SpawnItem
                     }
                     return null;
@@ -522,7 +537,7 @@ namespace MurderItemSpawner
                 case SpawnLocationType.HomeBuildingEntrance:
                     if (recipient != null && recipient.home != null)
                     {
-                        Plugin.Log.LogInfo($"[ConfigManager] Checking building entrance location for {belongsTo.name} at {recipient.home.name}");
+                        //Plugin.Log.LogInfo($"[ConfigManager] Checking building entrance location for {belongsTo.name} at {recipient.home.name}");
                         return null; // Just return null, actual spawning will happen in SpawnItem
                     }
                     return null;
@@ -530,21 +545,21 @@ namespace MurderItemSpawner
                 case SpawnLocationType.WorkplaceBuildingEntrance:
                     if (belongsTo != null && belongsTo.job != null && belongsTo.job.employer != null && belongsTo.job.employer.address != null)
                     {
-                        Plugin.Log.LogInfo($"[ConfigManager] Checking workplace building entrance location for {belongsTo.name} at {belongsTo.job.employer.address.name}");
+                        //Plugin.Log.LogInfo($"[ConfigManager] Checking workplace building entrance location for {belongsTo.name} at {belongsTo.job.employer.address.name}");
                         return null; // Just return null, actual spawning will happen in SpawnItem
                     }
                     return null;
                 case SpawnLocationType.CityHallBathroom:
                     if (belongsTo != null)
                     {
-                        Plugin.Log.LogInfo($"[ConfigManager] Checking city hall bathroom location for {belongsTo.name}");
+                        //Plugin.Log.LogInfo($"[ConfigManager] Checking city hall bathroom location for {belongsTo.name}");
                         return null; // Just return null, actual spawning will happen in SpawnItemCityHallBathroom
                     }
                     return null;
                 case SpawnLocationType.HotelRooftopBar:
                     if (belongsTo != null)
                     {
-                        Plugin.Log.LogInfo($"[ConfigManager] Checking hotel rooftop bar location for {belongsTo.name}");
+                        //Plugin.Log.LogInfo($"[ConfigManager] Checking hotel rooftop bar location for {belongsTo.name}");
                         return null; // Just return null, actual spawning will happen in SpawnItemHotelRooftopBar
                     }
                     return null;

@@ -23,7 +23,8 @@ namespace MurderItemSpawner
         }
 
         // Method to spawn an item at a location in the lobby
-        public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float spawnChance = 1.0f)
+        public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float spawnChance = 1.0f,
+            bool useMultipleOwners = false, List<BelongsTo> owners = null)
         {
             try
             {
@@ -31,7 +32,7 @@ namespace MurderItemSpawner
                 float randomValue = UnityEngine.Random.Range(0f, 1f);
                 if (randomValue > spawnChance)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemDoormat] Skipping spawn of {presetName} due to chance (roll: {randomValue}, needed: <= {spawnChance})");
+                    Plugin.LogDebug($"[SpawnItemDoormat] Skipping spawn of {presetName} due to chance (roll: {randomValue}, needed: <= {spawnChance})");
                     return;
                 }
 
@@ -51,16 +52,46 @@ namespace MurderItemSpawner
                 }
 
                 NewAddress recipientAddress = recipient.home;
-                Plugin.Log.LogInfo($"[SpawnItemDoormat] Owner: {owner.name}, Recipient: {recipient.name}, Address: {recipientAddress.name}");
+                Plugin.LogDebug($"[SpawnItemDoormat] Owner: {owner.name}, Recipient: {recipient.name}, Address: {recipientAddress.name}");
 
                 // Spawn the item using the same approach as the game's SpawnSpareKey method
                 Interactable spawnedItem = SpawnItemOnDoormat(recipientAddress, interactablePresetItem, owner, presetName);
                 
-                spawnedItem.SetOwner(owner);
+                // Handle ownership based on whether multiple owners are used
+                if (useMultipleOwners && owners != null && owners.Count > 0)
+                {
+                    // Set the primary owner first
+                    spawnedItem.SetOwner(owner);
+                    
+                    // Add additional fingerprints for each owner in the list
+                    foreach (BelongsTo ownerType in owners)
+                    {
+                        // Get the Human object for this owner type
+                        Human additionalOwner = ConfigManager.Instance.GetOwnerForFingerprint(ownerType);
+                        
+                        if (additionalOwner != null)
+                        {
+                            Plugin.LogDebug($"[SpawnItemDoormat] Adding fingerprint for {ownerType}");
+                            // Add the fingerprint with default life parameter
+                            spawnedItem.AddNewDynamicFingerprint(additionalOwner, Interactable.PrintLife.timed);
+                        }
+                        else
+                        {
+                            Plugin.LogDebug($"[SpawnItemDoormat] Could not add fingerprint for {ownerType} - Human not found");
+                        }
+                    }
+                    
+                    Plugin.LogDebug($"[SpawnItemDoormat] Successfully added multiple owners to '{presetName}'");
+                }
+                else
+                {
+                    // Standard single owner
+                    spawnedItem.SetOwner(owner);
+                }
 
                 if (spawnedItem != null)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemDoormat] Successfully spawned '{presetName}' on doormat in lobby. Item node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
+                    Plugin.LogDebug($"[SpawnItemDoormat] Successfully spawned '{presetName}' on doormat in lobby. Item node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
                 }
                 else
                 {

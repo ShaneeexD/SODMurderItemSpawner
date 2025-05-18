@@ -38,23 +38,25 @@ namespace MurderItemSpawner
             Interactable targetLocation,
             string presetName,
             bool unlockMailbox,
-            float spawnChance)
+            float spawnChance,
+            bool useMultipleOwners = false,
+            List<BelongsTo> owners = null)
         {
             try
             {
                 float randomValue = UnityEngine.Random.Range(0f, 1f);
                 if (randomValue > spawnChance)
                 {
-                    Plugin.Log.LogInfo($"Cannot spawn item: Spawn chance not met (Random value: {randomValue}, Required chance: {spawnChance})");
+                    Plugin.LogDebug($"Cannot spawn item: Spawn chance not met (Random value: {randomValue}, Required chance: {spawnChance})");
                     return;
                 }
                 
-                Plugin.Log.LogInfo($"Spawn chance check passed (Random value: {randomValue}, Required chance: {spawnChance})");
+                Plugin.LogDebug($"Spawn chance check passed (Random value: {randomValue}, Required chance: {spawnChance})");
                 
                 // Validate parameters
                 if (owner == null)
                 {
-                    Plugin.Log.LogInfo("Cannot spawn item: No owner specified");
+                    Plugin.LogDebug("Cannot spawn item: No owner specified");
                     return;
                 }
 
@@ -70,7 +72,7 @@ namespace MurderItemSpawner
 
                 if (interactablePresetItem == null)
                 {
-                    Plugin.Log.LogInfo("Cannot spawn item: No valid preset found");
+                    Plugin.LogDebug("Cannot spawn item: No valid preset found");
                     return;
                 }
                 
@@ -101,29 +103,29 @@ namespace MurderItemSpawner
                         // Get the mailbox's game location
                         NewGameLocation mailboxLocation = targetMailbox.node.gameLocation;
                         
-                        Plugin.Log.LogInfo($"Creating item in mailbox location: {mailboxLocation.name}");
+                        Plugin.LogDebug($"Creating item in mailbox location: {mailboxLocation.name}");
                         
                         // Add detailed debugging before attempting to place the object
-                        Plugin.Log.LogInfo($"Mailbox details: Type={targetMailbox.GetType().Name}");
-                        Plugin.Log.LogInfo($"Mailbox position: {targetMailbox.wPos}, rotation: {targetMailbox.wEuler}");
-                        Plugin.Log.LogInfo($"Mailbox node: {(targetMailbox.node != null ? targetMailbox.node.ToString() : "null")}");
-                        Plugin.Log.LogInfo($"Mailbox game location: {mailboxLocation.name}");
-                        Plugin.Log.LogInfo($"Item preset: {interactablePresetItem.name}");
-                        Plugin.Log.LogInfo($"Owner: {(owner != null ? owner.name : "null")}");
-                        Plugin.Log.LogInfo($"Recipient: {(recipient != null ? recipient.name : "null")}");
+                        Plugin.LogDebug($"Mailbox details: Type={targetMailbox.GetType().Name}");
+                        Plugin.LogDebug($"Mailbox position: {targetMailbox.wPos}, rotation: {targetMailbox.wEuler}");
+                        Plugin.LogDebug($"Mailbox node: {(targetMailbox.node != null ? targetMailbox.node.ToString() : "null")}");
+                        Plugin.LogDebug($"Mailbox game location: {mailboxLocation.name}");
+                        Plugin.LogDebug($"Item preset: {interactablePresetItem.name}");
+                        Plugin.LogDebug($"Owner: {(owner != null ? owner.name : "null")}");
+                        Plugin.LogDebug($"Recipient: {(recipient != null ? recipient.name : "null")}");
 
                         // Check if the mailbox is locked and try to unlock it
-                        Plugin.Log.LogInfo($"Mailbox locked state: {targetMailbox.locked}");
+                        Plugin.LogDebug($"Mailbox locked state: {targetMailbox.locked}");
                         if (targetMailbox.locked)
                         {
-                            Plugin.Log.LogInfo("Attempting to unlock mailbox...");
+                            Plugin.LogDebug("Attempting to unlock mailbox...");
                             targetMailbox.SetLockedState(false, null, false, true);
-                            Plugin.Log.LogInfo($"Mailbox locked state after unlock attempt: {targetMailbox.locked}");
+                            Plugin.LogDebug($"Mailbox locked state after unlock attempt: {targetMailbox.locked}");
                         }
 
                         // Log detailed debug info about the mailbox rotation
-                        Plugin.Log.LogInfo("=== Mailbox Rotation Info ====");
-                        Plugin.Log.LogInfo($"Mailbox rotation (wEuler): {targetMailbox.wEuler}");
+                        Plugin.LogDebug("=== Mailbox Rotation Info ====");
+                        Plugin.LogDebug($"Mailbox rotation (wEuler): {targetMailbox.wEuler}");
                         
                         // Get rotation as quaternion and extract forward/right/up vectors
                         Quaternion mailboxRotation = Quaternion.Euler(targetMailbox.wEuler);
@@ -131,7 +133,7 @@ namespace MurderItemSpawner
                         Vector3 mailboxRight = mailboxRotation * Vector3.right;
                         Vector3 mailboxUp = mailboxRotation * Vector3.up;
                         
-                        Plugin.Log.LogInfo($"Mailbox forward: {mailboxForward}, right: {mailboxRight}, up: {mailboxUp}");
+                        Plugin.LogDebug($"Mailbox forward: {mailboxForward}, right: {mailboxRight}, up: {mailboxUp}");
                         
                         // Calculate position with offset based on mailbox rotation
                         Vector3 spawnPos = targetMailbox.wPos;
@@ -146,10 +148,10 @@ namespace MurderItemSpawner
                         spawnPos += mailboxRight * rightOffset;
                         spawnPos += mailboxUp * upOffset;
                         
-                        Plugin.Log.LogInfo($"Base position: {targetMailbox.wPos}, Offset position: {spawnPos}");
+                        Plugin.LogDebug($"Base position: {targetMailbox.wPos}, Offset position: {spawnPos}");
                         
                         // Create the item using CreateWorldInteractable
-                        Plugin.Log.LogInfo("Creating item using CreateWorldInteractable with rotation-based offset...");
+                        Plugin.LogDebug("Creating item using CreateWorldInteractable with rotation-based offset...");
                         spawnedItem = InteractableCreator.Instance.CreateWorldInteractable(
                             interactablePresetItem,  // The item preset
                             owner,                   // The owner of the item
@@ -170,8 +172,32 @@ namespace MurderItemSpawner
                             // Update the item's position and node
                         //    spawnedItem.UpdateWorldPositionAndNode(true, true);
                             
-                            Plugin.Log.LogInfo($"Successfully created item using CreateWorldInteractable");
-                            Plugin.Log.LogInfo($"Item position: {spawnedItem.wPos}, node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
+                            // Handle multiple owners if enabled
+                            if (useMultipleOwners && owners != null && owners.Count > 0)
+                            {
+                                // Add additional fingerprints for each owner in the list
+                                foreach (BelongsTo ownerType in owners)
+                                {
+                                    // Get the Human object for this owner type
+                                    Human additionalOwner = ConfigManager.Instance.GetOwnerForFingerprint(ownerType);
+                                    
+                                    if (additionalOwner != null)
+                                    {
+                                        Plugin.LogDebug($"[SpawnItemMailbox] Adding fingerprint for {ownerType}");
+                                        // Add the fingerprint with default life parameter
+                                        spawnedItem.AddNewDynamicFingerprint(additionalOwner, Interactable.PrintLife.timed);
+                                    }
+                                    else
+                                    {
+                                        Plugin.LogDebug($"[SpawnItemMailbox] Could not add fingerprint for {ownerType} - Human not found");
+                                    }
+                                }
+                                
+                                Plugin.LogDebug($"[SpawnItemMailbox] Successfully added multiple owners to '{presetName}'");
+                            }
+                            
+                            Plugin.LogDebug($"Successfully created item using CreateWorldInteractable");
+                            Plugin.LogDebug($"Item position: {spawnedItem.wPos}, node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
                         }
                         else
                         {

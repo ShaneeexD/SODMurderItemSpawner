@@ -67,7 +67,7 @@ namespace MurderItemSpawner
 
             return new ModConfig();
         }
-
+        
 
     }
 
@@ -125,8 +125,6 @@ namespace MurderItemSpawner
         Murderer,
         Victim,
         Player,
-        MurdererNeighbor,
-        VictimNeighbor,
         MurdererDoctor,
         VictimDoctor,
         MurdererLandlord,
@@ -139,8 +137,6 @@ namespace MurderItemSpawner
         Murderer,
         Victim,
         Player,
-        MurdererNeighbor,
-        VictimNeighbor,
         MurdererDoctor,
         VictimDoctor,
         MurdererLandlord,
@@ -186,6 +182,10 @@ namespace MurderItemSpawner
         // Furniture placement options
         public bool UseFurniture { get; set; } = false;
         public List<string> FurniturePresets { get; set; } = new List<string>();
+
+        // Multiple owners options
+        public bool UseMultipleOwners { get; set; } = false;
+        public List<BelongsTo> Owners { get; set; } = new List<BelongsTo>();
 
     }
 }

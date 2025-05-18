@@ -24,7 +24,8 @@ namespace MurderItemSpawner
         }
 
         // Method to spawn an item at a location in the lobby
-        public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float spawnChance = 1.0f)
+        public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float spawnChance = 1.0f,
+            bool useMultipleOwners = false, List<BelongsTo> owners = null)
         {
             try
             {
@@ -32,7 +33,7 @@ namespace MurderItemSpawner
                 float randomValue = UnityEngine.Random.Range(0f, 1f);
                 if (randomValue > spawnChance)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemLobby] Skipping spawn of {presetName} due to chance (roll: {randomValue}, needed: <= {spawnChance})");
+                    Plugin.LogDebug($"[SpawnItemLobby] Skipping spawn of {presetName} due to chance (roll: {randomValue}, needed: <= {spawnChance})");
                     return;
                 }
 
@@ -52,17 +53,47 @@ namespace MurderItemSpawner
                 }
 
                 NewAddress recipientAddress = recipient.home;
-                Plugin.Log.LogInfo($"[SpawnItemLobby] Owner: {owner.name}, Recipient: {recipient.name}, Address: {recipientAddress.name}");
+                Plugin.LogDebug($"[SpawnItemLobby] Owner: {owner.name}, Recipient: {recipient.name}, Address: {recipientAddress.name}");
 
                 // Spawn the item using the same approach as the game's SpawnSpareKey method
                 Interactable spawnedItem = SpawnItemOnDoormat(recipientAddress, interactablePresetItem, owner, presetName);
                 
-                spawnedItem.SetOwner(owner);
+                // Handle ownership based on whether multiple owners are used
+                if (useMultipleOwners && owners != null && owners.Count > 0)
+                {
+                    // Set the primary owner first
+                    spawnedItem.SetOwner(owner);
+                    
+                    // Add additional fingerprints for each owner in the list
+                    foreach (BelongsTo ownerType in owners)
+                    {
+                        // Get the Human object for this owner type
+                        Human additionalOwner = ConfigManager.Instance.GetOwnerForFingerprint(ownerType);
+                        
+                        if (additionalOwner != null)
+                        {
+                            Plugin.LogDebug($"[SpawnItemLobbyHome] Adding fingerprint for {ownerType}");
+                            // Add the fingerprint with default life parameter
+                            spawnedItem.AddNewDynamicFingerprint(additionalOwner, Interactable.PrintLife.timed);
+                        }
+                        else
+                        {
+                            Plugin.LogDebug($"[SpawnItemLobbyHome] Could not add fingerprint for {ownerType} - Human not found");
+                        }
+                    }
+                    
+                    Plugin.LogDebug($"[SpawnItemLobbyHome] Successfully added multiple owners to '{presetName}'");
+                }
+                else
+                {
+                    // Standard single owner
+                    spawnedItem.SetOwner(owner);
+                }
 
                 if (spawnedItem != null)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemLobby] Successfully spawned '{presetName}' on doormat in lobby. Item node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
-                    Plugin.Log.LogInfo($"[SpawnItemLobby] Item '{presetName}' final world position: {spawnedItem.wPos}");
+                    Plugin.LogDebug($"[SpawnItemLobby] Successfully spawned '{presetName}' on doormat in lobby. Item node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
+                    Plugin.LogDebug($"[SpawnItemLobby] Item '{presetName}' final world position: {spawnedItem.wPos}");
                 }
                 else
                 {
@@ -237,7 +268,7 @@ namespace MurderItemSpawner
                     Vector3 entrancePosition = entranceNode.position;
                     Vector3 directionToEntrance = (entrancePosition - doormatPosition).normalized;
                     doormatRotation = Quaternion.LookRotation(directionToEntrance);
-                    Plugin.Log.LogInfo($"[SpawnItemLobby] Calculated rotation based on entrance direction: {doormatRotation.eulerAngles}");
+                    Plugin.LogDebug($"[SpawnItemLobby] Calculated rotation based on entrance direction: {doormatRotation.eulerAngles}");
                 }
                 else
                 {
@@ -261,8 +292,8 @@ namespace MurderItemSpawner
                                         (doormatRight * rightOffset) + 
                                         (doormatUp * upOffset);
                 
-                Plugin.Log.LogInfo($"[SpawnItemLobby] Original doormat position: {doormatPosition}");
-                Plugin.Log.LogInfo($"[SpawnItemLobby] Calculated offset position: {offsetPosition}");
+                Plugin.LogDebug($"[SpawnItemLobby] Original doormat position: {doormatPosition}");
+                Plugin.LogDebug($"[SpawnItemLobby] Calculated offset position: {offsetPosition}");
                 
                 // Create a list of passed variables for the room ID, just like the game does
                 Il2CppSystem.Collections.Generic.List<Interactable.Passed> passedVars = new Il2CppSystem.Collections.Generic.List<Interactable.Passed>();
@@ -287,7 +318,7 @@ namespace MurderItemSpawner
                     if (spawnedItem != null)
                     {
                         // Now directly update the spawned item's position properties
-                        Plugin.Log.LogInfo($"[SpawnItemLobby] Item spawned successfully. Original position: {spawnedItem.wPos}");
+                        Plugin.LogDebug($"[SpawnItemLobby] Item spawned successfully. Original position: {spawnedItem.wPos}");
                         
                         // Update the item's position directly, similar to how RaiseLightswitch does it
                         Vector3 worldPosition = offsetPosition;
@@ -300,7 +331,7 @@ namespace MurderItemSpawner
                         spawnedItem.wPos = worldPosition; // World position
                         spawnedItem.spWPos = worldPosition; // Saved/serialized world position
                         spawnedItem.wEuler = doormatRotation.eulerAngles;
-                        Plugin.Log.LogInfo($"[SpawnItemLobby] Item repositioned to offset. New position: {spawnedItem.wPos}");
+                        Plugin.LogDebug($"[SpawnItemLobby] Item repositioned to offset. New position: {spawnedItem.wPos}");
                     }
                     else
                     {

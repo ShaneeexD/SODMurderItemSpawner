@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using SOD.Common;
 using UnityEngine;
 
@@ -24,7 +25,8 @@ namespace MurderItemSpawner
         }
 
         // Method to spawn an item at a building entrance
-        public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float spawnChance, SubLocationTypeBuildingEntrances subLocationTypeBuildingEntrances)
+        public static void SpawnItemAtLocation(Human owner, Human recipient, string presetName, float spawnChance, SubLocationTypeBuildingEntrances subLocationTypeBuildingEntrances,
+            bool useMultipleOwners = false, List<BelongsTo> owners = null)
         {
             try
             {
@@ -32,7 +34,7 @@ namespace MurderItemSpawner
                 float randomValue = UnityEngine.Random.Range(0f, 1f);
                 if (randomValue > spawnChance)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Skipping spawn of {presetName} due to chance (roll: {randomValue}, needed: <= {spawnChance})");
+                    Plugin.LogDebug($"[SpawnItemBuildingEntrance] Skipping spawn of {presetName} due to chance (roll: {randomValue}, needed: <= {spawnChance})");
                     return;
                 }
 
@@ -51,17 +53,47 @@ namespace MurderItemSpawner
                 }
 
                 NewAddress recipientAddress = recipient.home;
-                Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Owner: {owner.name}, Recipient: {recipient.name}, Address: {recipientAddress.name}");
+                Plugin.LogDebug($"[SpawnItemBuildingEntrance] Owner: {owner.name}, Recipient: {recipient.name}, Address: {recipientAddress.name}");
 
                 // Find the building entrance and spawn the item
                 Interactable spawnedItem = SpawnItemAtBuildingEntrance(recipientAddress, interactablePresetItem, owner, recipient, presetName, spawnChance, subLocationTypeBuildingEntrances);
                 
                 if (spawnedItem != null)
                 {
-                    // Ensure the item is owned by the correct person
-                    spawnedItem.SetOwner(owner);
-                    Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Successfully spawned '{presetName}' at building entrance. Item node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
-                    Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Item '{presetName}' final world position: {spawnedItem.wPos}");
+                    // Handle ownership based on whether multiple owners are used
+                    if (useMultipleOwners && owners != null && owners.Count > 0)
+                    {
+                        // Set the primary owner first
+                        spawnedItem.SetOwner(owner);
+                        
+                        // Add additional fingerprints for each owner in the list
+                        foreach (BelongsTo ownerType in owners)
+                        {
+                            // Get the Human object for this owner type
+                            Human additionalOwner = ConfigManager.Instance.GetOwnerForFingerprint(ownerType);
+                            
+                            if (additionalOwner != null)
+                            {
+                                Plugin.LogDebug($"[SpawnItemBuildingEntrance] Adding fingerprint for {ownerType}");
+                                // Add the fingerprint with default life parameter
+                                spawnedItem.AddNewDynamicFingerprint(additionalOwner, Interactable.PrintLife.timed);
+                            }
+                            else
+                            {
+                                Plugin.LogDebug($"[SpawnItemBuildingEntrance] Could not add fingerprint for {ownerType} - Human not found");
+                            }
+                        }
+                        
+                        Plugin.LogDebug($"[SpawnItemBuildingEntrance] Successfully added multiple owners to '{presetName}'");
+                    }
+                    else
+                    {
+                        // Standard single owner
+                        spawnedItem.SetOwner(owner);
+                    }
+                    
+                    Plugin.LogDebug($"[SpawnItemBuildingEntrance] Successfully spawned '{presetName}' at building entrance. Item node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
+                    Plugin.LogDebug($"[SpawnItemBuildingEntrance] Item '{presetName}' final world position: {spawnedItem.wPos}");
                 }
                 else
                 {
@@ -88,16 +120,16 @@ namespace MurderItemSpawner
             var building = address.building;
             if (building != null)
             {
-                Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found building directly from address: {building.name}");
+                Plugin.LogDebug($"[SpawnItemBuildingEntrance] Found building directly from address: {building.name}");
             }
             else
             {
-                Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] No building found directly from address, trying floor");
+                Plugin.LogDebug($"[SpawnItemBuildingEntrance] No building found directly from address, trying floor");
                 
                 // Fall back to getting the floor
                 if (address.floor != null)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found floor for address {address.name}");
+                    Plugin.LogDebug($"[SpawnItemBuildingEntrance] Found floor for address {address.name}");
                 }
                 else
                 {
@@ -114,12 +146,12 @@ namespace MurderItemSpawner
             if (building != null && building.mainEntrance != null)
             {
                 mainEntranceWall = building.mainEntrance;
-                Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found main entrance directly from building");
+                Plugin.LogDebug($"[SpawnItemBuildingEntrance] Found main entrance directly from building");
             }
             // If not, check additional entrances from the building
             else if (building != null && building.additionalEntrances != null && building.additionalEntrances.Count > 0)
             {
-                Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Checking {building.additionalEntrances.Count} additional entrances from building");
+                Plugin.LogDebug($"[SpawnItemBuildingEntrance] Checking {building.additionalEntrances.Count} additional entrances from building");
                 
                 // Try to find an entrance that connects to a street
                 foreach (var entrance in building.additionalEntrances)
@@ -132,7 +164,7 @@ namespace MurderItemSpawner
                         streetNode.gameLocation.thisAsStreet != null)
                     {
                         mainEntranceWall = entrance;
-                        Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found street entrance in building's additional entrances");
+                        Plugin.LogDebug($"[SpawnItemBuildingEntrance] Found street entrance in building's additional entrances");
                         break;
                     }
                 }
@@ -141,7 +173,7 @@ namespace MurderItemSpawner
             // If we still don't have a main entrance, look for building entrances on the floor
             if (mainEntranceWall == null && address.floor != null && address.floor.buildingEntrances != null && address.floor.buildingEntrances.Count > 0)
             {
-                Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Checking {address.floor.buildingEntrances.Count} entrances from floor");
+                Plugin.LogDebug($"[SpawnItemBuildingEntrance] Checking {address.floor.buildingEntrances.Count} entrances from floor");
                 
                 // Try to find an entrance that connects to a street
                 foreach (var entrance in address.floor.buildingEntrances)
@@ -154,7 +186,7 @@ namespace MurderItemSpawner
                         streetNode.gameLocation.thisAsStreet != null)
                     {
                         mainEntranceWall = entrance;
-                        Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found street entrance in building entrances");
+                        Plugin.LogDebug($"[SpawnItemBuildingEntrance] Found street entrance in building entrances");
                         break;
                     }
                 }
@@ -182,7 +214,7 @@ namespace MurderItemSpawner
                         streetNode.gameLocation.thisAsStreet != null)
                     {
                         mainEntranceWall = entrance.wall;
-                        Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found street entrance from address entrances for {address.name}");
+                        Plugin.LogDebug($"[SpawnItemBuildingEntrance] Found street entrance from address entrances for {address.name}");
                         break;
                     }
                 }
@@ -192,13 +224,13 @@ namespace MurderItemSpawner
             if (mainEntranceWall != null)
             {
                 entranceWall = mainEntranceWall;
-                Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Using main entrance to street for building");
+                Plugin.LogDebug($"[SpawnItemBuildingEntrance] Using main entrance to street for building");
             }
             // Otherwise fall back to the first entrance of the address
             else if (address.entrances != null && address.entrances.Count > 0)
             {
                 entranceWall = address.entrances[0].wall;
-                Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] No street entrance found, using first address entrance for {address.name}");
+                Plugin.LogDebug($"[SpawnItemBuildingEntrance] No street entrance found, using first address entrance for {address.name}");
             }
             else
             {
@@ -212,7 +244,7 @@ namespace MurderItemSpawner
                 return null;
             }
             
-            Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Using entrance for {address.name}");
+            Plugin.LogDebug($"[SpawnItemBuildingEntrance] Using entrance for {address.name}");
             
             // Get the node on the street side of the entrance
             NewNode entranceNode = entranceWall.otherWall.node;
@@ -225,13 +257,13 @@ namespace MurderItemSpawner
                 if (entranceNode.gameLocation.thisAsStreet != null)
                 {
                     isStreetNode = true;
-                    Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found street node on otherWall side for {address.name}");
+                    Plugin.LogDebug($"[SpawnItemBuildingEntrance] Found street node on otherWall side for {address.name}");
                 }
                 // Also accept if it's just outside the address
                 else if (entranceNode.gameLocation != address)
                 {
                     isStreetNode = true;
-                    Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found outside node on otherWall side for {address.name}");
+                    Plugin.LogDebug($"[SpawnItemBuildingEntrance] Found outside node on otherWall side for {address.name}");
                 }
             }
             
@@ -245,13 +277,13 @@ namespace MurderItemSpawner
                     if (entranceNode.gameLocation.thisAsStreet != null)
                     {
                         isStreetNode = true;
-                        Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found street node on wall side for {address.name}");
+                        Plugin.LogDebug($"[SpawnItemBuildingEntrance] Found street node on wall side for {address.name}");
                     }
                     // Also accept if it's just outside the address
                     else if (entranceNode.gameLocation != address)
                     {
                         isStreetNode = true;
-                        Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found outside node on wall side for {address.name}");
+                        Plugin.LogDebug($"[SpawnItemBuildingEntrance] Found outside node on wall side for {address.name}");
                     }
                 }
             }
@@ -263,7 +295,7 @@ namespace MurderItemSpawner
                 return null;
             }
             
-            Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Found entrance node at {entranceNode.nodeCoord} for {address.name}");
+            Plugin.LogDebug($"[SpawnItemBuildingEntrance] Found entrance node at {entranceNode.nodeCoord} for {address.name}");
             
             // Calculate spawn position - slightly offset from the entrance
             Vector3 entrancePosition = entranceNode.position;
@@ -296,8 +328,8 @@ namespace MurderItemSpawner
             // Add a small height offset to ensure it's not on the ground
             
             
-            Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Entrance position: {entrancePosition}, Wall direction: {wallDirection}");
-            Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Calculated spawn position: {spawnPosition}");
+            Plugin.LogDebug($"[SpawnItemBuildingEntrance] Entrance position: {entrancePosition}, Wall direction: {wallDirection}");
+            Plugin.LogDebug($"[SpawnItemBuildingEntrance] Calculated spawn position: {spawnPosition}");
             
             // Create a list of passed variables for the room ID
             Il2CppSystem.Collections.Generic.List<Interactable.Passed> passedVars = new Il2CppSystem.Collections.Generic.List<Interactable.Passed>();
@@ -309,7 +341,7 @@ namespace MurderItemSpawner
                 float randomYRotation = UnityEngine.Random.Range(0f, 360f);
                 Vector3 randomRotation = new Vector3(0f, randomYRotation, 0f);
                 
-                Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Using random rotation: {randomRotation}");
+                Plugin.LogDebug($"[SpawnItemBuildingEntrance] Using random rotation: {randomRotation}");
                 
                 // Create the item at the entrance
                 Interactable spawnedItem = InteractableCreator.Instance.CreateWorldInteractable(
@@ -328,13 +360,19 @@ namespace MurderItemSpawner
                 {
                     // Set the node to the entrance node
                     spawnedItem.node = entranceNode;
-                    
                     // Update the item's position and node
                     spawnedItem.UpdateWorldPositionAndNode(true, true);
                     
-                    Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Successfully created item at building entrance");
-                    Plugin.Log.LogInfo($"[SpawnItemBuildingEntrance] Item position: {spawnedItem.wPos}, node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
-                    
+                    Plugin.LogDebug($"[SpawnItemBuildingEntrance] Successfully created item at building entrance");
+                    Plugin.LogDebug($"[SpawnItemBuildingEntrance] Item position: {spawnedItem.wPos}, node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
+                   // if(recipient != null && recipient.characterTraits != null)
+                //    {
+                      //  foreach (Human.Trait trait in recipient.characterTraits)
+                      //  {
+                        //    if(trait.name == "")
+                        //    Plugin.LogDebug($"[SpawnItemBuildingEntrance] Trait: {trait.name}");
+                      //  }
+                   // }
                     return spawnedItem;
                 }
                 else

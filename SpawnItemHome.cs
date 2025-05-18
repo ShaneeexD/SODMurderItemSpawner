@@ -19,7 +19,7 @@ namespace MurderItemSpawner
                 float randomValue = UnityEngine.Random.Range(0f, 1f);
                 if (randomValue > spawnChance)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemHome] Skipping spawn of {presetName} due to chance (roll: {randomValue}, needed: <= {spawnChance})");
+                    Plugin.LogDebug($"[SpawnItemHome] Skipping spawn of {presetName} due to chance (roll: {randomValue}, needed: <= {spawnChance})");
                     return;
                 }
 
@@ -39,7 +39,7 @@ namespace MurderItemSpawner
                 }
 
                 NewAddress recipientAddress = recipient.home;
-                Plugin.Log.LogInfo($"[SpawnItemHome] Owner: {owner.name}, Recipient: {recipient.name}, Address: {recipientAddress.name}");
+                Plugin.LogDebug($"[SpawnItemHome] Owner: {owner.name}, Recipient: {recipient.name}, Address: {recipientAddress.name}");
 
                 // Find the home and spawn the item
                 CoroutineHelper.StartCoroutine(SpawnItemInHomeCoroutine(interactablePresetItem, owner, recipient, presetName, 
@@ -71,14 +71,14 @@ namespace MurderItemSpawner
                 yield break;
             }
 
-            Plugin.Log.LogInfo($"[SpawnItemHome] Found building for address: {building.name}");
+            Plugin.LogDebug($"[SpawnItemHome] Found building for address: {building.name}");
 
             // Get all rooms in the building
             List<NewRoom> allRooms = new List<NewRoom>();
             
             // Get the specific apartment/unit name from the recipient's address
             string addressName = recipientAddress.name;
-            Plugin.Log.LogInfo($"[SpawnItemHome] Recipient's address: {addressName}");
+            Plugin.LogDebug($"[SpawnItemHome] Recipient's address: {addressName}");
             
             // Extract the apartment/unit number from the address name (e.g., "704 Grand Sage Hotel")
             string apartmentPrefix = "";
@@ -89,14 +89,14 @@ namespace MurderItemSpawner
                 if (spaceIndex > 0)
                 {
                     apartmentPrefix = addressName.Substring(0, spaceIndex).Trim();
-                    Plugin.Log.LogInfo($"[SpawnItemHome] Extracted apartment prefix: {apartmentPrefix}");
+                    Plugin.LogDebug($"[SpawnItemHome] Extracted apartment prefix: {apartmentPrefix}");
                 }
             }
             
             // If we have the recipient's floor, get all rooms on that floor that match the apartment prefix
             if (recipientAddress.floor != null)
             {
-                Plugin.Log.LogInfo($"[SpawnItemHome] Searching for rooms on floor: {recipientAddress.floor.name}");
+                Plugin.LogDebug($"[SpawnItemHome] Searching for rooms on floor: {recipientAddress.floor.name}");
                 
                 // Search for rooms in this floor
                 foreach (var room in CityData.Instance.roomDirectory)
@@ -104,19 +104,25 @@ namespace MurderItemSpawner
                     if (room != null && room.floor != null && 
                         room.floor.floorID == recipientAddress.floor.floorID)
                     {
+                        // Skip rooms with "Null" at the end of their name
+                        if (room.name != null && room.name.EndsWith("Null", StringComparison.OrdinalIgnoreCase))
+                        {
+                            Plugin.LogDebug($"[SpawnItemHome] Skipping null room: {room.name}");
+                            continue;
+                        }
                         // Check if the room name starts with the apartment prefix
                         if (!string.IsNullOrEmpty(apartmentPrefix) && 
                             room.name != null && 
                             room.name.StartsWith(apartmentPrefix, StringComparison.OrdinalIgnoreCase))
                         {
                             allRooms.Add(room);
-                            Plugin.Log.LogInfo($"[SpawnItemHome] Added room: {room.name} (matches apartment prefix)");
+                            Plugin.LogDebug($"[SpawnItemHome] Added room: {room.name} (matches apartment prefix)");
                         }
                         // If we can't determine the apartment prefix, fall back to just using rooms on the same floor
                         else if (string.IsNullOrEmpty(apartmentPrefix))
                         {
                             allRooms.Add(room);
-                            Plugin.Log.LogInfo($"[SpawnItemHome] Added room: {room.name} (same floor, no prefix matching)");
+                            Plugin.LogDebug($"[SpawnItemHome] Added room: {room.name} (same floor, no prefix matching)");
                         }
                     }
                 }
@@ -131,7 +137,7 @@ namespace MurderItemSpawner
                 yield break;
             }
             
-            Plugin.Log.LogInfo($"[SpawnItemHome] Found {allRooms.Count} rooms in building {building.name}");
+            Plugin.LogDebug($"[SpawnItemHome] Found {allRooms.Count} rooms in building {building.name}");
             
             // Filter rooms based on targetRoomName if provided
             List<NewRoom> targetRooms = new List<NewRoom>();
@@ -142,7 +148,7 @@ namespace MurderItemSpawner
                     if (room.name != null && room.name.Contains(targetRoomName, StringComparison.OrdinalIgnoreCase))
                     {
                         targetRooms.Add(room);
-                        Plugin.Log.LogInfo($"[SpawnItemHome] Found matching room: {room.name}");
+                        Plugin.LogDebug($"[SpawnItemHome] Found matching room: {room.name}");
                     }
                 }
                 
@@ -207,14 +213,14 @@ namespace MurderItemSpawner
                     if (matchingFurniture.Count > 0)
                     {
                         roomsWithFurniture.Add(room);
-                        Plugin.Log.LogInfo($"[SpawnItemHome] Room {room.name} has {matchingFurniture.Count} matching furniture pieces");
+                        Plugin.LogDebug($"[SpawnItemHome] Room {room.name} has {matchingFurniture.Count} matching furniture pieces");
                     }
                 }
                 
                 // If we found rooms with matching furniture, only use those
                 if (roomsWithFurniture.Count > 0)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemHome] Found {roomsWithFurniture.Count} rooms with matching furniture");
+                    Plugin.LogDebug($"[SpawnItemHome] Found {roomsWithFurniture.Count} rooms with matching furniture");
                     targetRooms = roomsWithFurniture;
                 }
                 else
@@ -232,7 +238,7 @@ namespace MurderItemSpawner
             
             int randomRoomIndex = UnityEngine.Random.Range(0, targetRooms.Count);
             NewRoom selectedRoom = targetRooms[randomRoomIndex];
-            Plugin.Log.LogInfo($"[SpawnItemHome] Selected room: {selectedRoom.name}");
+            Plugin.LogDebug($"[SpawnItemHome] Selected room: {selectedRoom.name}");
             
             // Try to place the item on furniture if requested
             bool usedFurniture = false;
@@ -241,7 +247,7 @@ namespace MurderItemSpawner
             
             if (useFurniture && selectedRoom != null && selectedRoom.individualFurniture != null && selectedRoom.individualFurniture.Count > 0)
             {
-                Plugin.Log.LogInfo($"[SpawnItemHome] Attempting to find furniture in room {selectedRoom.name} for item placement");
+                Plugin.LogDebug($"[SpawnItemHome] Attempting to find furniture in room {selectedRoom.name} for item placement");
                 
                 // Get all furniture in the room
                 List<FurnitureLocation> matchingFurniture = new List<FurnitureLocation>();
@@ -263,7 +269,7 @@ namespace MurderItemSpawner
                             if (furnitureName.Contains(presetName, StringComparison.OrdinalIgnoreCase))
                             {
                                 isMatch = true;
-                                Plugin.Log.LogInfo($"[SpawnItemHome] Found matching furniture: {furnitureName} contains '{presetName}'");
+                                Plugin.LogDebug($"[SpawnItemHome] Found matching furniture: {furnitureName} contains '{presetName}'");
                                 break;
                             }
                         }
@@ -320,26 +326,26 @@ namespace MurderItemSpawner
                             if (!alreadyUsed)
                             {
                                 usedFurniture = true;
-                                Plugin.Log.LogInfo($"[SpawnItemHome] Will place item on furniture: {selectedFurniture.furniture.name}, using subobject index: {suitableSubObjects.IndexOf(selectedSubObject)}");
+                                Plugin.LogDebug($"[SpawnItemHome] Will place item on furniture: {selectedFurniture.furniture.name}, using subobject index: {suitableSubObjects.IndexOf(selectedSubObject)}");
                             }
                             else
                             {
-                                Plugin.Log.LogInfo($"[SpawnItemHome] Selected subobject is already used by another interactable. Will try node placement instead.");
+                                Plugin.LogDebug($"[SpawnItemHome] Selected subobject is already used by another interactable. Will try node placement instead.");
                             }
                         }
                         else
                         {
-                            Plugin.Log.LogInfo($"[SpawnItemHome] No suitable subobjects found on furniture {selectedFurniture.furniture.name}. Will try node placement instead.");
+                            Plugin.LogDebug($"[SpawnItemHome] No suitable subobjects found on furniture {selectedFurniture.furniture.name}. Will try node placement instead.");
                         }
                     }
                     else
                     {
-                        Plugin.Log.LogInfo($"[SpawnItemHome] Furniture {selectedFurniture.furniture.name} has no subobjects. Will try node placement instead.");
+                        Plugin.LogDebug($"[SpawnItemHome] Furniture {selectedFurniture.furniture.name} has no subobjects. Will try node placement instead.");
                     }
                 }
                 else
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemHome] No matching furniture found in room {selectedRoom.name}. Will try node placement instead.");
+                    Plugin.LogDebug($"[SpawnItemHome] No matching furniture found in room {selectedRoom.name}. Will try node placement instead.");
                 }
             }
             
@@ -350,7 +356,7 @@ namespace MurderItemSpawner
             // Skip node placement if we're using furniture
             if (usedFurniture)
             {
-                Plugin.Log.LogInfo($"[SpawnItemHome] Using furniture placement, skipping node placement");
+                Plugin.LogDebug($"[SpawnItemHome] Using furniture placement, skipping node placement");
             }
             // Otherwise try to use node placement
             else if (selectedRoom.nodes != null && selectedRoom.nodes.Count > 0)
@@ -358,7 +364,7 @@ namespace MurderItemSpawner
                 List<NewNode> nodesList = new List<NewNode>();
                 foreach (var node in selectedRoom.nodes)
                 {
-                    if (node.isInaccessable || node.isObstacle) { Plugin.Log.LogInfo($"[SpawnItemHome] Filtering out node: {node.name} (inaccessible)"); continue; }
+                    if (node.isInaccessable || node.isObstacle) { Plugin.LogDebug($"[SpawnItemHome] Filtering out node: {node.name} (inaccessible)"); continue; }
                     nodesList.Add(node);
                 }
                 if (nodesList.Count > 0)
@@ -366,7 +372,7 @@ namespace MurderItemSpawner
                     int randomNodeIndex = UnityEngine.Random.Range(0, nodesList.Count);
                     placementNode = nodesList[randomNodeIndex];
                     spawnPosition = placementNode.position;
-                    Plugin.Log.LogInfo($"[SpawnItemHome] Using node in room: {placementNode}");
+                    Plugin.LogDebug($"[SpawnItemHome] Using node in room: {placementNode}");
                 }
                 else
                 {
@@ -385,7 +391,7 @@ namespace MurderItemSpawner
                 spawnPosition.y += 0.0f;
                 spawnPosition.x += UnityEngine.Random.Range(-0.1f, 0.1f);
                 spawnPosition.z += UnityEngine.Random.Range(-0.1f, 0.1f);
-                Plugin.Log.LogInfo($"[SpawnItemHome] Calculated spawn position: {spawnPosition}");
+                Plugin.LogDebug($"[SpawnItemHome] Calculated spawn position: {spawnPosition}");
             }
             
             // Create the interactable based on whether we're using furniture or node placement
@@ -396,7 +402,7 @@ namespace MurderItemSpawner
                 // If we're using furniture placement
                 if (usedFurniture && selectedFurniture != null && selectedSubObject != null)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemHome] Creating item '{itemNameForLog}' on furniture {selectedFurniture.furniture.name} in room {selectedRoom.name}");
+                    Plugin.LogDebug($"[SpawnItemHome] Creating item '{itemNameForLog}' on furniture {selectedFurniture.furniture.name} in room {selectedRoom.name}");
                     
                     // Create a list of passed variables for the room ID
                     Il2CppSystem.Collections.Generic.List<Interactable.Passed> furniturePassedVars = new Il2CppSystem.Collections.Generic.List<Interactable.Passed>();
@@ -422,8 +428,8 @@ namespace MurderItemSpawner
                         // Explicitly set the owner
                         spawnedItem.SetOwner(owner);
                         
-                        Plugin.Log.LogInfo($"[SpawnItemHome] Successfully created furniture-spawned interactable '{itemNameForLog}'");
-                        Plugin.Log.LogInfo($"[SpawnItemHome] Item position: {spawnedItem.wPos}, furniture: {selectedFurniture.furniture.name}");
+                        Plugin.LogDebug($"[SpawnItemHome] Successfully created furniture-spawned interactable '{itemNameForLog}'");
+                        Plugin.LogDebug($"[SpawnItemHome] Item position: {spawnedItem.wPos}, furniture: {selectedFurniture.furniture.name}");
                     }
                     else
                     {
@@ -440,7 +446,7 @@ namespace MurderItemSpawner
                     
                     if (placementNode.isObstacle || placementNode.isInaccessable)
                     {
-                        Plugin.Log.LogInfo($"[SpawnItemHome] Node at {placementNode.position} is marked as {(placementNode.isObstacle ? "an obstacle" : "inaccessible")}");
+                        Plugin.LogDebug($"[SpawnItemHome] Node at {placementNode.position} is marked as {(placementNode.isObstacle ? "an obstacle" : "inaccessible")}");
                         nodeIsOccupied = true;
                     }
                     
@@ -450,7 +456,7 @@ namespace MurderItemSpawner
                     {
                         spawnPosition = placementNode.position;
                         spawnPosition.y += 0.0f;
-                        Plugin.Log.LogInfo($"[SpawnItemHome] Using node position with small Y offset: {spawnPosition}");
+                        Plugin.LogDebug($"[SpawnItemHome] Using node position with small Y offset: {spawnPosition}");
                     }
                     
                     if (nodeIsOccupied)
@@ -465,7 +471,7 @@ namespace MurderItemSpawner
                     
                     float randomYRotation = UnityEngine.Random.Range(0f, 360f);
                     Vector3 randomRotation = new Vector3(0f, randomYRotation, 0f);
-                    Plugin.Log.LogInfo($"[SpawnItemHome] Using random rotation: {randomRotation}");
+                    Plugin.LogDebug($"[SpawnItemHome] Using random rotation: {randomRotation}");
                     
                     spawnedItem = InteractableCreator.Instance.CreateWorldInteractable(
                         itemPreset,                // The item preset
@@ -486,8 +492,8 @@ namespace MurderItemSpawner
                         
                         spawnedItem.node = placementNode;
                         spawnedItem.UpdateWorldPositionAndNode(true, true);
-                        Plugin.Log.LogInfo($"[SpawnItemHome] Successfully created item in home at node");
-                        Plugin.Log.LogInfo($"[SpawnItemHome] Item position: {spawnedItem.wPos}, node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
+                        Plugin.LogDebug($"[SpawnItemHome] Successfully created item in home at node");
+                        Plugin.LogDebug($"[SpawnItemHome] Item position: {spawnedItem.wPos}, node: {(spawnedItem.node != null ? spawnedItem.node.ToString() : "null")}");
                     }
                     else
                     {
@@ -502,23 +508,23 @@ namespace MurderItemSpawner
                 
                 if (spawnedItem != null)
                 {
-                    Plugin.Log.LogInfo($"[SpawnItemHome] Item '{itemNameForLog}' successfully created in {selectedRoom.name}");
+                    Plugin.LogDebug($"[SpawnItemHome] Item '{itemNameForLog}' successfully created in {selectedRoom.name}");
                     
                     // Log all furniture in the room for reference
                     if (selectedRoom != null && selectedRoom.individualFurniture != null && selectedRoom.individualFurniture.Count > 0)
                     {
-                        Plugin.Log.LogInfo($"[SpawnItemHome] Furniture in room {selectedRoom.name}:");
+                        Plugin.LogDebug($"[SpawnItemHome] Furniture in room {selectedRoom.name}:");
                         foreach (var furniture in selectedRoom.individualFurniture)
                         {
                             if (furniture != null && furniture.furniture != null)
                             {
-                                Plugin.Log.LogInfo($"[SpawnItemHome] - {furniture.furniture.name}");
+                                Plugin.LogDebug($"[SpawnItemHome] - {furniture.furniture.name}");
                             }
                         }
                     }
                     else
                     {
-                        Plugin.Log.LogInfo($"[SpawnItemHome] No furniture found in room {selectedRoom.name}");
+                        Plugin.LogDebug($"[SpawnItemHome] No furniture found in room {selectedRoom.name}");
                     }
                 }
             }

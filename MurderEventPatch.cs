@@ -22,7 +22,7 @@ namespace MurderItemSpawner
                     murderType = MurderController.Instance.chosenMO.name;
                 }
 
-                Plugin.Log.LogInfo($"Murder detected! Type: {murderType}");
+                //Plugin.Log.LogInfo($"Murder detected! Type: {murderType}");
                 
                 // Check if any rules should be triggered for this event
                 ConfigManager.Instance.CheckRulesForEvent("OnVictimKilled", murderType);
@@ -49,7 +49,7 @@ namespace MurderItemSpawner
                     murderType = MurderController.Instance.chosenMO.name;
                 }
 
-                Plugin.Log.LogInfo($"Murder detected! Type: {murderType}");
+                //Plugin.Log.LogInfo($"Murder detected! Type: {murderType}");
                 
                 // Check if any rules should be triggered for this event
                 ConfigManager.Instance.CheckRulesForEvent("PickNewVictim", murderType);
@@ -76,7 +76,7 @@ namespace MurderItemSpawner
                     murderType = MurderController.Instance.chosenMO.name;
                 }
 
-                Plugin.Log.LogInfo($"Murder detected! Type: {murderType}");
+                //Plugin.Log.LogInfo($"Murder detected! Type: {murderType}");
                 
                 // Check if any rules should be triggered for this event
                 ConfigManager.Instance.CheckRulesForEvent("OnVictimDiscovery", murderType);
