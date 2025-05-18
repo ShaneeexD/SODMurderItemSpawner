@@ -189,6 +189,11 @@ namespace MurderItemSpawner
 
         // Spawn control options
         public bool OnlySpawnOnce { get; set; } = false;
+        
+        // Item dependency options
+        public bool RequiresPriorItem { get; set; } = false;
+        public string RequiredPriorItem { get; set; } = "";
+        public bool RequiresSeparateTrigger { get; set; } = true; // Default to requiring a separate trigger
 
     }
 }

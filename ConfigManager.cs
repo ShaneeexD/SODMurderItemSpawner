@@ -1,8 +1,11 @@
 using System;
-using System.IO;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using UnityEngine;
+using SOD.Common;
 using BepInEx;
 
 namespace MurderItemSpawner
@@ -31,13 +34,20 @@ namespace MurderItemSpawner
         // Dictionary to track which rules have been triggered
         private Dictionary<string, bool> triggeredRules = new Dictionary<string, bool>();
         
-        // Dictionary to track spawned items (ruleName -> hasBeenSpawned)
+        // Dictionary of spawned items (rule name -> bool)
         private Dictionary<string, bool> spawnedItems = new Dictionary<string, bool>();
+        
+        // Dictionary of item spawn events (rule name -> event name)
+        private Dictionary<string, string> itemSpawnEvents = new Dictionary<string, string>();
+        
+        // Current case ID to detect when a new case starts
+        private string currentCaseId = "";
 
         // Private constructor
         private ConfigManager()
         {
             LoadConfig();
+            LoadTrackingData();
         }
         
         // Reset tracking dictionaries for a new murder case
@@ -46,6 +56,220 @@ namespace MurderItemSpawner
             Plugin.LogDebug("Resetting item spawn tracking for new murder case");
             triggeredRules.Clear();
             spawnedItems.Clear();
+            itemSpawnEvents.Clear();
+            
+            // Save the empty tracking data
+            SaveTrackingData();
+        }
+        
+        // Get the current save file name
+        private string GetCurrentSaveFileName()
+        {
+            // Check if we have a save file loaded
+            if (RestartSafeController.Instance != null && RestartSafeController.Instance.saveStateFileInfo != null)
+            {
+                return RestartSafeController.Instance.saveStateFileInfo.Name;
+            }
+            
+            // If no save file is loaded, use the default
+            return "DEFAULT_SAVE";
+        }
+        
+        // Get all possible save file names for the current session
+        // This includes both the current save file name and DEFAULT_SAVE if we're in a new game
+        private List<string> GetAllSaveFileNames()
+        {
+            List<string> saveNames = new List<string>();
+            
+            // Always add the current save file name
+            saveNames.Add(GetCurrentSaveFileName());
+            
+            // If we're using a real save file (not the default), also add DEFAULT_SAVE
+            // This helps with migration from DEFAULT_SAVE to the actual save name
+            if (GetCurrentSaveFileName() != "DEFAULT_SAVE")
+            {
+                saveNames.Add("DEFAULT_SAVE");
+            }
+            
+            return saveNames;
+        }
+        
+        // Save tracking data to PlayerPrefs
+        public void SaveTrackingData()
+        {
+            try
+            {
+                // Get the current case ID from MurderController
+                string caseId = "";
+                if (MurderController.Instance != null && MurderController.Instance.chosenMO != null)
+                {
+                    // Use the murder MO name as a case identifier
+                    caseId = MurderController.Instance.chosenMO.name;
+                }
+                
+                // Prepare the serialized data once
+                // Save the spawned items
+                StringBuilder spawnedItemsStr = new StringBuilder();
+                foreach (var kvp in spawnedItems)
+                {
+                    spawnedItemsStr.Append(kvp.Key).Append(":").Append(kvp.Value ? "1" : "0").Append(",");
+                }
+                
+                // Save the item spawn events
+                StringBuilder itemSpawnEventsStr = new StringBuilder();
+                foreach (var kvp in itemSpawnEvents)
+                {
+                    itemSpawnEventsStr.Append(kvp.Key).Append(":").Append(kvp.Value).Append(",");
+                }
+                
+                // Save the triggered rules
+                StringBuilder triggeredRulesStr = new StringBuilder();
+                foreach (var kvp in triggeredRules)
+                {
+                    triggeredRulesStr.Append(kvp.Key).Append(":").Append(kvp.Value ? "1" : "0").Append(",");
+                }
+                
+                // Get all save file names to save data for
+                List<string> saveFileNames = GetAllSaveFileNames();
+                
+                // Save data for each save file name
+                foreach (string saveFileName in saveFileNames)
+                {
+                    // Save the current case ID
+                    PlayerPrefs.SetString($"MIS_{saveFileName}_CurrentCaseId", caseId);
+                    
+                    // Save the serialized data
+                    PlayerPrefs.SetString($"MIS_{saveFileName}_SpawnedItems", spawnedItemsStr.ToString());
+                    PlayerPrefs.SetString($"MIS_{saveFileName}_ItemSpawnEvents", itemSpawnEventsStr.ToString());
+                    PlayerPrefs.SetString($"MIS_{saveFileName}_TriggeredRules", triggeredRulesStr.ToString());
+                    
+                    Plugin.LogDebug($"Saved tracking data for save file: {saveFileName}, case ID: {caseId}");
+                }
+                
+                PlayerPrefs.Save();
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.LogError($"Error saving tracking data: {ex.Message}");
+            }
+        }
+        
+        // Load tracking data from PlayerPrefs
+        public void LoadTrackingData()
+        {
+            try
+            {
+                // Get all possible save file names
+                List<string> saveFileNames = GetAllSaveFileNames();
+                string usableSaveFileName = null;
+                
+                // Find the first save file name that has data
+                foreach (string saveFileName in saveFileNames)
+                {
+                    if (PlayerPrefs.HasKey($"MIS_{saveFileName}_CurrentCaseId"))
+                    {
+                        usableSaveFileName = saveFileName;
+                        break;
+                    }
+                }
+                
+                // If no save file has data, reset tracking and return
+                if (usableSaveFileName == null)
+                {
+                    Plugin.LogDebug($"No saved tracking data found for any save files: {string.Join(", ", saveFileNames)}");
+                    ResetTracking(); // Reset tracking for a new save
+                    return;
+                }
+                
+                // Get the saved case ID
+                string savedCaseId = PlayerPrefs.GetString($"MIS_{usableSaveFileName}_CurrentCaseId");
+                
+                // Get the current case ID from MurderController
+                string currentCaseId = "";
+                if (MurderController.Instance != null && MurderController.Instance.chosenMO != null)
+                {
+                    // Use the murder MO name as a case identifier
+                    currentCaseId = MurderController.Instance.chosenMO.name;
+                }
+                
+                // Check if this is the same case
+                if (!string.IsNullOrEmpty(currentCaseId) && savedCaseId != currentCaseId)
+                {
+                    Plugin.LogDebug($"New case detected (old: {savedCaseId}, new: {currentCaseId}). Resetting tracking.");
+                    ResetTracking();
+                    return;
+                }
+                
+                // Clear existing data before loading
+                spawnedItems.Clear();
+                itemSpawnEvents.Clear();
+                triggeredRules.Clear();
+                
+                // Load the spawned items
+                if (PlayerPrefs.HasKey($"MIS_{usableSaveFileName}_SpawnedItems"))
+                {
+                    string spawnedItemsStr = PlayerPrefs.GetString($"MIS_{usableSaveFileName}_SpawnedItems");
+                    string[] items = spawnedItemsStr.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (string item in items)
+                    {
+                        string[] parts = item.Split(':');
+                        if (parts.Length == 2)
+                        {
+                            spawnedItems[parts[0]] = parts[1] == "1";
+                        }
+                    }
+                }
+                
+                // Load the item spawn events
+                if (PlayerPrefs.HasKey($"MIS_{usableSaveFileName}_ItemSpawnEvents"))
+                {
+                    string itemSpawnEventsStr = PlayerPrefs.GetString($"MIS_{usableSaveFileName}_ItemSpawnEvents");
+                    string[] events = itemSpawnEventsStr.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (string evt in events)
+                    {
+                        string[] parts = evt.Split(':');
+                        if (parts.Length == 2)
+                        {
+                            itemSpawnEvents[parts[0]] = parts[1];
+                        }
+                    }
+                }
+                
+                // Load the triggered rules
+                if (PlayerPrefs.HasKey($"MIS_{usableSaveFileName}_TriggeredRules"))
+                {
+                    string triggeredRulesStr = PlayerPrefs.GetString($"MIS_{usableSaveFileName}_TriggeredRules");
+                    string[] rules = triggeredRulesStr.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (string rule in rules)
+                    {
+                        string[] parts = rule.Split(':');
+                        if (parts.Length == 2)
+                        {
+                            triggeredRules[parts[0]] = parts[1] == "1";
+                        }
+                    }
+                }
+                
+                // Save the current case ID
+                this.currentCaseId = currentCaseId;
+                
+                // If we loaded from DEFAULT_SAVE but we're using a real save name now,
+                // make sure to save the data under the real save name too
+                string currentSaveFileName = GetCurrentSaveFileName();
+                if (usableSaveFileName != currentSaveFileName)
+                {
+                    Plugin.LogDebug($"Migrating tracking data from {usableSaveFileName} to {currentSaveFileName}");
+                    SaveTrackingData(); // This will save to all save file names
+                }
+                
+                Plugin.LogDebug($"Loaded tracking data for save file: {usableSaveFileName}, case ID: {this.currentCaseId}");
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.LogError($"Error loading tracking data: {ex.Message}");
+                // Reset tracking in case of error
+                ResetTracking();
+            }
         }
 
         // Load all configurations from files
@@ -175,13 +399,14 @@ namespace MurderItemSpawner
             {
                 if (!config.Enabled)
                     continue;
-
-                foreach (var rule in config.SpawnRules)
+        
+                // First pass: Process rules that don't require prior items
+                foreach (var rule in config.SpawnRules.Where(r => !r.RequiresPriorItem))
                 {
                     // Skip if rule is disabled
                     if (!rule.Enabled)
                         continue;
-                        
+                
                     // If OnlySpawnOnce is true, check if any event has already triggered this rule
                     if (rule.OnlySpawnOnce)
                     {
@@ -192,10 +417,10 @@ namespace MurderItemSpawner
                             if (triggeredRules.ContainsKey(checkKey) && triggeredRules[checkKey])
                             {
                                 alreadyTriggered = true;
-                                break;
+                                    break;
                             }
                         }
-                        
+                
                         if (alreadyTriggered)
                         {
                             Plugin.LogDebug($"Skipping rule '{rule.Name}' for event '{eventName}' because it has already been triggered (OnlySpawnOnce=true)");
@@ -212,16 +437,19 @@ namespace MurderItemSpawner
                         {
                             Plugin.Log.LogInfo($"Rule '{rule.Name}' triggered by event '{eventName}' with murder type '{murderType}'");
                         }
-                        
+                
                         // Schedule the spawn with the specified delay
-                        SpawnItem(rule);
-                        
-                        // Always mark the current event as triggered for this rule
-                        // This prevents the same event from triggering the rule multiple times
-                        string currentEventKey = $"{rule.Name}_{eventName}";
-                        triggeredRules[currentEventKey] = true;
-                        Plugin.LogDebug($"Rule '{rule.Name}' marked as triggered for event '{eventName}'");
-                        
+                        // Only mark the rule as triggered if the spawn was successful
+                        bool spawnSuccessful = SpawnItem(rule, eventName);
+                
+                        if (spawnSuccessful)
+                        {
+                            // Mark the current event as triggered for this rule
+                            // This prevents the same event from triggering the rule multiple times
+                            string currentEventKey = $"{rule.Name}_{eventName}";
+                            triggeredRules[currentEventKey] = true;
+                            Plugin.LogDebug($"Rule '{rule.Name}' marked as triggered for event '{eventName}'");
+                    
                         // If OnlySpawnOnce is true, also mark all other trigger events for this rule
                         if (rule.OnlySpawnOnce)
                         {
@@ -231,19 +459,91 @@ namespace MurderItemSpawner
                                 // Skip the current event as it's already marked above
                                 if (triggerEvent == eventName)
                                     continue;
-                                    
+                                
                                 string triggerKey = $"{rule.Name}_{triggerEvent}";
                                 triggeredRules[triggerKey] = true;
-                                Plugin.LogDebug($"Rule '{rule.Name}' also marked as triggered for event '{triggerEvent}' (OnlySpawnOnce=true)");
+                                Plugin.LogDebug($"Rule '{rule.Name}' marked as triggered for event '{triggerEvent}' (due to OnlySpawnOnce=true)");
+                        }
+                    }
+                }
+            }
+        }
+        
+            // Second pass: Process rules that require prior items
+            foreach (var rule in config.SpawnRules.Where(r => r.RequiresPriorItem))
+            {
+                // Skip if rule is disabled
+                if (!rule.Enabled)
+                    continue;
+                
+                // If OnlySpawnOnce is true, check if any event has already triggered this rule
+                if (rule.OnlySpawnOnce)
+                {
+                    bool alreadyTriggered = false;
+                    foreach (string triggerEvent in rule.TriggerEvents)
+                    {
+                        string checkKey = $"{rule.Name}_{triggerEvent}";
+                        if (triggeredRules.ContainsKey(checkKey) && triggeredRules[checkKey])
+                        {
+                            alreadyTriggered = true;
+                            break;
+                        }
+                    }
+                
+                    if (alreadyTriggered)
+                    {
+                        Plugin.LogDebug($"Skipping rule '{rule.Name}' for event '{eventName}' because it has already been triggered (OnlySpawnOnce=true)");
+                        continue;
+                    }
+                }
+
+                // Check if this rule should be triggered
+                if (rule.TriggerEvents.Contains(eventName) && 
+                    (string.IsNullOrEmpty(rule.MurderMO) || rule.MurderMO == murderType))
+                    {
+                    // Start the spawn process
+                    if (config.ShowDebugMessages)
+                    {
+                        Plugin.Log.LogInfo($"Rule '{rule.Name}' triggered by event '{eventName}' with murder type '{murderType}'");
+                    }
+                
+                    // Schedule the spawn with the specified delay
+                    // Only mark the rule as triggered if the spawn was successful
+                    bool spawnSuccessful = SpawnItem(rule, eventName);
+                
+                    if (spawnSuccessful)
+                    {
+                        // Mark the current event as triggered for this rule
+                        // This prevents the same event from triggering the rule multiple times
+                        string currentEventKey = $"{rule.Name}_{eventName}";
+                        triggeredRules[currentEventKey] = true;
+                        Plugin.LogDebug($"Rule '{rule.Name}' marked as triggered for event '{eventName}'");
+                    
+                        // If OnlySpawnOnce is true, also mark all other trigger events for this rule
+                        if (rule.OnlySpawnOnce)
+                        {
+                            // Mark all other possible trigger events for this rule as triggered
+                            foreach (string triggerEvent in rule.TriggerEvents)
+                            {
+                                // Skip the current event as it's already marked above
+                                if (triggerEvent == eventName)
+                                    continue;
+                                
+                                string triggerKey = $"{rule.Name}_{triggerEvent}";
+                                triggeredRules[triggerKey] = true;
+                                Plugin.LogDebug($"Rule '{rule.Name}' marked as triggered for event '{triggerEvent}' (due to OnlySpawnOnce=true)");
                             }
                         }
                     }
                 }
             }
         }
+    }
+
 
         // Spawn an item based on a rule
-        private void SpawnItem(SpawnRule rule)
+        // Returns true if the item was spawned, false if it was skipped
+        private bool SpawnItem(SpawnRule rule, string eventName = "")
         {
             try
             {
@@ -251,7 +551,29 @@ namespace MurderItemSpawner
                 if (rule.OnlySpawnOnce && spawnedItems.ContainsKey(rule.Name) && spawnedItems[rule.Name])
                 {
                     Plugin.LogDebug($"Skipping spawn for rule '{rule.Name}': Item has already been spawned once");
-                    return;
+                    return false;
+                }
+                
+                // Check if this item requires another item to be spawned first
+                if (rule.RequiresPriorItem && !string.IsNullOrEmpty(rule.RequiredPriorItem))
+                {
+                    // Check if the required item exists
+                    if (!spawnedItems.ContainsKey(rule.RequiredPriorItem) || !spawnedItems[rule.RequiredPriorItem])
+                    {
+                        Plugin.LogDebug($"Skipping spawn for rule '{rule.Name}': Required prior item '{rule.RequiredPriorItem}' has not been spawned yet");
+                        return false;
+                    }
+                    
+                    // If we require a separate trigger and the prior item was spawned in this same event, skip
+                    if (rule.RequiresSeparateTrigger && !string.IsNullOrEmpty(eventName) && 
+                        itemSpawnEvents.ContainsKey(rule.RequiredPriorItem) && 
+                        itemSpawnEvents[rule.RequiredPriorItem] == eventName)
+                    {
+                        Plugin.LogDebug($"Skipping spawn for rule '{rule.Name}': Required prior item '{rule.RequiredPriorItem}' was spawned in the same event ('{eventName}') and RequiresSeparateTrigger is true");
+                        return false;
+                    }
+                    
+                    Plugin.LogDebug($"Required prior item '{rule.RequiredPriorItem}' found, proceeding with spawn for rule '{rule.Name}'");
                 }
 
                 // Get the item owner based on the BelongsTo property
@@ -259,7 +581,7 @@ namespace MurderItemSpawner
                 if (itemOwner == null)
                 {
                     Plugin.Log.LogInfo($"Cannot spawn item for rule '{rule.Name}': No valid owner found");
-                    return;
+                    return false;
                 }
 
                 // Get the recipient (spawn location reference) based on the ItemRecipient property
@@ -267,7 +589,7 @@ namespace MurderItemSpawner
                 if (spawnLocationRecipient == null)
                 {
                     Plugin.Log.LogInfo($"Cannot spawn item for rule '{rule.Name}': No valid recipient found");
-                    return;
+                    return false;
                 }
 
                 // Get the spawn location using the recipient as reference
@@ -275,7 +597,7 @@ namespace MurderItemSpawner
                 if (spawnLocation == null && rule.SpawnLocation == SpawnLocationType.Mailbox)
                 {
                     Plugin.Log.LogInfo($"Cannot spawn item for rule '{rule.Name}': No valid spawn location found");
-                    return;
+                    return false;
                 }
 
                 if (rule.SpawnLocation == SpawnLocationType.HomeBuildingEntrance)
@@ -370,7 +692,7 @@ namespace MurderItemSpawner
                         if (rule.RandomSpawnLocations == null || rule.RandomSpawnLocations.Count == 0)
                         {
                             Plugin.Log.LogWarning($"[ConfigManager] Random spawn location selected but no RandomSpawnLocations defined in rule '{rule.Name}'");
-                            return;
+                            return false;
                         }
                         
                         // Choose a random location from the pool
@@ -381,7 +703,7 @@ namespace MurderItemSpawner
                         if (!Enum.TryParse(randomLocationName, out SpawnLocationType randomLocationType))
                         {
                             Plugin.Log.LogWarning($"[ConfigManager] Invalid random location name '{randomLocationName}' in rule '{rule.Name}'");
-                            return;
+                            return false;
                         }
                         
                        // Plugin.Log.LogInfo($"[ConfigManager] Randomly selected location: {randomLocationType} for rule '{rule.Name}'");
@@ -400,8 +722,7 @@ namespace MurderItemSpawner
                         };
                         
                         // Recursively call SpawnItem with the new rule
-                        SpawnItem(randomRule);
-                        break;
+                        return SpawnItem(randomRule);
 
                         case SpawnLocationType.CityHallBathroom:
                             SpawnItemCityHallBathroom.SpawnItemAtLocation(
@@ -469,27 +790,37 @@ namespace MurderItemSpawner
                             {
                                 SpawnItemMailbox.SpawnItemAtLocation(
                                     itemOwner,                    // Owner of the item
-                                    spawnLocationRecipient,        // Recipient used for spawn location reference
-                                    spawnLocation,
+                                    spawnLocationRecipient,       // Recipient used for spawn location reference
+                                    spawnLocation,                // The actual spawn location
                                     rule.ItemToSpawn,
                                     rule.UnlockMailbox,
                                     rule.SpawnChance
                                 );
                             }
                             break;
+                    }
+                    
+                    // Mark the item as spawned if OnlySpawnOnce is true
+                    if (rule.OnlySpawnOnce)
+                    {
+                        spawnedItems[rule.Name] = true;
+                        Plugin.Log.LogInfo($"Marked item from rule '{rule.Name}' as spawned (OnlySpawnOnce=true)");
+                    }
+                    
+                    // Record which event spawned this item
+                    if (!string.IsNullOrEmpty(eventName))
+                    {
+                        itemSpawnEvents[rule.Name] = eventName;
+                        Plugin.Log.LogInfo($"Item from rule '{rule.Name}' was spawned by event '{eventName}'");
+                    }
+                    
+                    return true;
                 }
-                
-                // Mark the item as spawned if OnlySpawnOnce is enabled
-                if (rule.OnlySpawnOnce)
+                catch (Exception ex)
                 {
-                    spawnedItems[rule.Name] = true;
-                    Plugin.LogDebug($"Marked item from rule '{rule.Name}' as spawned (OnlySpawnOnce=true)");
+                    Plugin.Log.LogError($"Error spawning item: {ex.Message}");
+                    return false;
                 }
-            }
-            catch (Exception ex)
-            {
-                Plugin.Log.LogError($"Error spawning item for rule '{rule.Name}': {ex.Message}");
-            }
         }
 
         // Get the recipient based on the rule type
