@@ -435,6 +435,13 @@ namespace MurderItemSpawner
                     if (!rule.Enabled)
                         continue;
                 
+                    // First check if this item has already been spawned (for OnlySpawnOnce rules)
+                    if (rule.OnlySpawnOnce && spawnedItems.ContainsKey(rule.Name) && spawnedItems[rule.Name])
+                    {
+                        Plugin.LogDebug($"Skipping rule '{rule.Name}' for event '{eventName}' because the item has already been spawned (OnlySpawnOnce=true)");
+                        continue;
+                    }
+                    
                     // If OnlySpawnOnce is true, check if any event has already triggered this rule
                     if (rule.OnlySpawnOnce)
                     {
@@ -445,7 +452,7 @@ namespace MurderItemSpawner
                             if (triggeredRules.ContainsKey(checkKey) && triggeredRules[checkKey])
                             {
                                 alreadyTriggered = true;
-                                    break;
+                                break;
                             }
                         }
                 
