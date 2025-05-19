@@ -101,7 +101,7 @@ namespace MurderItemSpawner
                 
                 // Reset any triggered rules
                 ConfigManager.Instance.ResetTriggeredRules();
-                //ConfigManager.Instance.ResetTracking();
+                
                 // Reload the configuration in case it was changed
                 ConfigManager.Instance.LoadConfig();
             }

@@ -40,6 +40,9 @@ namespace MurderItemSpawner
         // Dictionary of item spawn events (rule name -> event name)
         private Dictionary<string, string> itemSpawnEvents = new Dictionary<string, string>();
         
+        // Dictionary to track trigger counts for rules that require multiple triggers (rule_name_event -> count)
+        private Dictionary<string, int> triggerCounts = new Dictionary<string, int>();
+        
         // Current case ID to detect when a new case starts
         private string currentCaseId = "";
 
@@ -57,6 +60,7 @@ namespace MurderItemSpawner
             triggeredRules.Clear();
             spawnedItems.Clear();
             itemSpawnEvents.Clear();
+            triggerCounts.Clear();
             
             // Save the empty tracking data
             SaveTrackingData();
@@ -129,6 +133,13 @@ namespace MurderItemSpawner
                     triggeredRulesStr.Append(kvp.Key).Append(":").Append(kvp.Value ? "1" : "0").Append(",");
                 }
                 
+                // Save the trigger counts
+                StringBuilder triggerCountsStr = new StringBuilder();
+                foreach (var kvp in triggerCounts)
+                {
+                    triggerCountsStr.Append(kvp.Key).Append(":").Append(kvp.Value).Append(",");
+                }
+                
                 // Get all save file names to save data for
                 List<string> saveFileNames = GetAllSaveFileNames();
                 
@@ -142,6 +153,7 @@ namespace MurderItemSpawner
                     PlayerPrefs.SetString($"MIS_{saveFileName}_SpawnedItems", spawnedItemsStr.ToString());
                     PlayerPrefs.SetString($"MIS_{saveFileName}_ItemSpawnEvents", itemSpawnEventsStr.ToString());
                     PlayerPrefs.SetString($"MIS_{saveFileName}_TriggeredRules", triggeredRulesStr.ToString());
+                    PlayerPrefs.SetString($"MIS_{saveFileName}_TriggerCounts", triggerCountsStr.ToString());
                     
                     Plugin.LogDebug($"Saved tracking data for save file: {saveFileName}, case ID: {caseId}");
                 }
@@ -204,6 +216,7 @@ namespace MurderItemSpawner
                 spawnedItems.Clear();
                 itemSpawnEvents.Clear();
                 triggeredRules.Clear();
+                triggerCounts.Clear();
                 
                 // Load the spawned items
                 if (PlayerPrefs.HasKey($"MIS_{usableSaveFileName}_SpawnedItems"))
@@ -246,6 +259,21 @@ namespace MurderItemSpawner
                         if (parts.Length == 2)
                         {
                             triggeredRules[parts[0]] = parts[1] == "1";
+                        }
+                    }
+                }
+                
+                // Load the trigger counts
+                if (PlayerPrefs.HasKey($"MIS_{usableSaveFileName}_TriggerCounts"))
+                {
+                    string triggerCountsStr = PlayerPrefs.GetString($"MIS_{usableSaveFileName}_TriggerCounts");
+                    string[] counts = triggerCountsStr.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (string count in counts)
+                    {
+                        string[] parts = count.Split(':');
+                        if (parts.Length == 2 && int.TryParse(parts[1], out int countValue))
+                        {
+                            triggerCounts[parts[0]] = countValue;
                         }
                     }
                 }
@@ -437,10 +465,45 @@ namespace MurderItemSpawner
                         {
                             Plugin.Log.LogInfo($"Rule '{rule.Name}' triggered by event '{eventName}' with murder type '{murderType}'");
                         }
-                
-                        // Schedule the spawn with the specified delay
-                        // Only mark the rule as triggered if the spawn was successful
-                        bool spawnSuccessful = SpawnItem(rule, eventName);
+                        
+                        // Check if this rule requires multiple triggers
+                        bool shouldSpawn = true;
+                        if (rule.RequiresMultipleTriggers && rule.RequiredTriggerCount > 1)
+                        {
+                            // Get the key for tracking this rule's trigger count
+                            string triggerCountKey = $"{rule.Name}_{eventName}";
+                            
+                            // Get the current trigger count or initialize to 0
+                            int currentCount = 0;
+                            if (triggerCounts.ContainsKey(triggerCountKey))
+                            {
+                                currentCount = triggerCounts[triggerCountKey];
+                            }
+                            
+                            // Increment the trigger count
+                            currentCount++;
+                            triggerCounts[triggerCountKey] = currentCount;
+                            
+                            // Check if we've reached the required count
+                            if (currentCount < rule.RequiredTriggerCount)
+                            {
+                                Plugin.LogDebug($"Rule '{rule.Name}' for event '{eventName}' has been triggered {currentCount}/{rule.RequiredTriggerCount} times");
+                                shouldSpawn = false;
+                            }
+                            else
+                            {
+                                Plugin.LogDebug($"Rule '{rule.Name}' for event '{eventName}' has reached required trigger count ({currentCount}/{rule.RequiredTriggerCount})");
+                            }
+                        }
+                        
+                        // Only spawn if we should
+                        bool spawnSuccessful = false;
+                        if (shouldSpawn)
+                        {
+                            // Schedule the spawn with the specified delay
+                            // Only mark the rule as triggered if the spawn was successful
+                            spawnSuccessful = SpawnItem(rule, eventName);
+                        }
                 
                         if (spawnSuccessful)
                         {
@@ -506,10 +569,45 @@ namespace MurderItemSpawner
                     {
                         Plugin.Log.LogInfo($"Rule '{rule.Name}' triggered by event '{eventName}' with murder type '{murderType}'");
                     }
-                
-                    // Schedule the spawn with the specified delay
-                    // Only mark the rule as triggered if the spawn was successful
-                    bool spawnSuccessful = SpawnItem(rule, eventName);
+                    
+                    // Check if this rule requires multiple triggers
+                    bool shouldSpawn = true;
+                    if (rule.RequiresMultipleTriggers && rule.RequiredTriggerCount > 1)
+                    {
+                        // Get the key for tracking this rule's trigger count
+                        string triggerCountKey = $"{rule.Name}_{eventName}";
+                        
+                        // Get the current trigger count or initialize to 0
+                        int currentCount = 0;
+                        if (triggerCounts.ContainsKey(triggerCountKey))
+                        {
+                            currentCount = triggerCounts[triggerCountKey];
+                        }
+                        
+                        // Increment the trigger count
+                        currentCount++;
+                        triggerCounts[triggerCountKey] = currentCount;
+                        
+                        // Check if we've reached the required count
+                        if (currentCount < rule.RequiredTriggerCount)
+                        {
+                            Plugin.LogDebug($"Rule '{rule.Name}' for event '{eventName}' has been triggered {currentCount}/{rule.RequiredTriggerCount} times");
+                            shouldSpawn = false;
+                        }
+                        else
+                        {
+                            Plugin.LogDebug($"Rule '{rule.Name}' for event '{eventName}' has reached required trigger count ({currentCount}/{rule.RequiredTriggerCount})");
+                        }
+                    }
+                    
+                    // Only spawn if we should
+                    bool spawnSuccessful = false;
+                    if (shouldSpawn)
+                    {
+                        // Schedule the spawn with the specified delay
+                        // Only mark the rule as triggered if the spawn was successful
+                        spawnSuccessful = SpawnItem(rule, eventName);
+                    }
                 
                     if (spawnSuccessful)
                     {

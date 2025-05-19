@@ -194,6 +194,10 @@ namespace MurderItemSpawner
         public bool RequiresPriorItem { get; set; } = false;
         public string RequiredPriorItem { get; set; } = "";
         public bool RequiresSeparateTrigger { get; set; } = true; // Default to requiring a separate trigger
+        
+        // Multiple trigger options
+        public bool RequiresMultipleTriggers { get; set; } = false;
+        public int RequiredTriggerCount { get; set; } = 1; // Default to 1, meaning it triggers on first occurrence
 
     }
 }
