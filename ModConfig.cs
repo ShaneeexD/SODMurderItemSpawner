@@ -143,7 +143,22 @@ namespace MurderItemSpawner
         VictimLandlord,
         Random
     }
+    
+    public enum TraitRule
+    {
+        IfAnyOfThese,    // If any of the traits match
+        IfAllOfThese,    // If all of the traits match
+        IfNoneOfThese    // If none of the traits match
+    }
 
+    [Serializable]
+    public class TraitModifier
+    {
+        public BelongsTo Who { get; set; } = BelongsTo.Victim;
+        public TraitRule Rule { get; set; } = TraitRule.IfAnyOfThese;
+        public List<string> TraitList { get; set; } = new List<string>();
+    }
+    
     [Serializable]
     public class SpawnRule
     {
@@ -198,6 +213,10 @@ namespace MurderItemSpawner
         // Multiple trigger options
         public bool RequiresMultipleTriggers { get; set; } = false;
         public int RequiredTriggerCount { get; set; } = 1; // Default to 1, meaning it triggers on first occurrence
+        
+        // Trait matching options
+        public bool UseTraits { get; set; } = false;
+        public List<TraitModifier> TraitModifiers { get; set; } = new List<TraitModifier>();
 
     }
 }

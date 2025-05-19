@@ -696,6 +696,85 @@ namespace MurderItemSpawner
                     Plugin.Log.LogInfo($"Cannot spawn item for rule '{rule.Name}': No valid recipient found");
                     return false;
                 }
+                
+                // Check trait matching if enabled
+                if (rule.UseTraits && rule.TraitModifiers != null && rule.TraitModifiers.Count > 0)
+                {
+                    Plugin.LogDebug($"Checking trait matching for rule '{rule.Name}'...");
+                    
+                    bool allTraitModifiersMatch = true;
+                    
+                    foreach (var traitModifier in rule.TraitModifiers)
+                    {
+                        // Get the human to check traits for
+                        Human humanToCheck = null;
+                        
+                        switch (traitModifier.Who)
+                        {
+                            case BelongsTo.Murderer:
+                                humanToCheck = MurderController.Instance?.currentMurderer;
+                                break;
+                            case BelongsTo.Victim:
+                                humanToCheck = MurderController.Instance?.currentVictim;
+                                break;
+                            case BelongsTo.Player:
+                                humanToCheck = Player.Instance;
+                                break;
+                            case BelongsTo.MurdererDoctor:
+                                if (MurderController.Instance?.currentMurderer != null)
+                                {
+                                    humanToCheck = MurderController.Instance.currentMurderer.GetDoctor();
+                                }
+                                break;
+                            case BelongsTo.VictimDoctor:
+                                if (MurderController.Instance?.currentVictim != null)
+                                {
+                                    humanToCheck = MurderController.Instance.currentVictim.GetDoctor();
+                                }
+                                break;
+                            case BelongsTo.MurdererLandlord:
+                                if (MurderController.Instance?.currentMurderer != null)
+                                {
+                                    humanToCheck = MurderController.Instance.currentMurderer.GetLandlord();
+                                }
+                                break;
+                            case BelongsTo.VictimLandlord:
+                                if (MurderController.Instance?.currentVictim != null)
+                                {
+                                    humanToCheck = MurderController.Instance.currentVictim.GetLandlord();
+                                }
+                                break;
+                            default:
+                                Plugin.LogDebug($"Unknown trait modifier Who value: {traitModifier.Who}");
+                                break;
+                        }
+                        
+                        if (humanToCheck == null)
+                        {
+                            Plugin.LogDebug($"Cannot check traits: Human not found for {traitModifier.Who}");
+                            allTraitModifiersMatch = false;
+                            break;
+                        }
+                        
+                        // Check if the human's traits match the specified rule
+                        bool traitsMatch = CheckTraitMatch(humanToCheck, traitModifier);
+                        
+                        if (!traitsMatch)
+                        {
+                            Plugin.LogDebug($"Trait matching failed for {traitModifier.Who}");
+                            allTraitModifiersMatch = false;
+                            break;
+                        }
+                    }
+                    
+                    if (!allTraitModifiersMatch)
+                    {
+                        Plugin.LogDebug($"Skipping spawn for rule '{rule.Name}': Trait matching failed");
+                        return false;
+                    }
+                    
+                    Plugin.LogDebug($"All trait modifiers matched for rule '{rule.Name}', proceeding with spawn");
+                }
 
                 // Get the spawn location using the recipient as reference
                 Interactable spawnLocation = GetSpawnLocation(rule, itemOwner, spawnLocationRecipient);
@@ -1084,6 +1163,90 @@ namespace MurderItemSpawner
                     triggeredRules[rule.Name] = false;
                 }
             }
+        }
+        
+        // Check if a human's traits match the specified trait rule
+        private bool CheckTraitMatch(Human human, TraitModifier traitModifier)
+        {
+            // If the human is null or has no traits, return false
+            if (human == null || human.characterTraits == null || human.characterTraits.Count == 0)
+            {
+                Plugin.LogDebug($"Cannot check traits: Human is null or has no traits");
+                return false;
+            }
+            
+            // Debug: Output all traits for this human
+            Plugin.LogDebug($"Checking traits for {human.name}:");
+            foreach (var trait in human.characterTraits)
+            {
+                if (trait != null)
+                {
+                    Plugin.LogDebug($"- {trait.name}");
+                }
+            }
+            
+            // Get the list of trait names for this human
+            List<string> humanTraits = new List<string>();
+            foreach (var trait in human.characterTraits)
+            {
+                if (trait != null)
+                {
+                    humanTraits.Add(trait.name);
+                }
+            }
+            
+            // Check if any of the traits match
+            if (traitModifier.Rule == TraitRule.IfAnyOfThese)
+            {
+                foreach (string traitName in traitModifier.TraitList)
+                {
+                    if (humanTraits.Contains(traitName))
+                    {
+                        Plugin.LogDebug($"Found matching trait: {traitName}");
+                        return true;
+                    }
+                }
+                
+                // No matches found
+                Plugin.LogDebug($"No matching traits found for IfAnyOfThese rule");
+                return false;
+            }
+            // Check if all of the traits match
+            else if (traitModifier.Rule == TraitRule.IfAllOfThese)
+            {
+                foreach (string traitName in traitModifier.TraitList)
+                {
+                    if (!humanTraits.Contains(traitName))
+                    {
+                        Plugin.LogDebug($"Missing required trait: {traitName}");
+                        return false;
+                    }
+                }
+                
+                // All traits matched
+                Plugin.LogDebug($"All required traits found for IfAllOfThese rule");
+                return true;
+            }
+            // Check if none of the traits match
+            else if (traitModifier.Rule == TraitRule.IfNoneOfThese)
+            {
+                foreach (string traitName in traitModifier.TraitList)
+                {
+                    if (humanTraits.Contains(traitName))
+                    {
+                        Plugin.LogDebug($"Found excluded trait: {traitName}");
+                        return false;
+                    }
+                }
+                
+                // No excluded traits found
+                Plugin.LogDebug($"No excluded traits found for IfNoneOfThese rule");
+                return true;
+            }
+            
+            // Default case (should never happen)
+            Plugin.LogDebug($"Unknown trait rule: {traitModifier.Rule}");
+            return false;
         }
     }
 }
