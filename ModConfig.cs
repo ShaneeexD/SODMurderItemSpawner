@@ -146,9 +146,15 @@ namespace MurderItemSpawner
     
     public enum TraitRule
     {
-        IfAnyOfThese,    // If any of the traits match
-        IfAllOfThese,    // If all of the traits match
-        IfNoneOfThese    // If none of the traits match
+        IfAnyOfThese = 0,
+        IfAllOfThese = 1,
+        IfNoneOfThese = 2
+    }
+
+    public enum JobRule
+    {
+        IfAnyOfThese = 0,
+        IfNoneOfThese = 1
     }
 
     [Serializable]
@@ -157,6 +163,14 @@ namespace MurderItemSpawner
         public BelongsTo Who { get; set; } = BelongsTo.Victim;
         public TraitRule Rule { get; set; } = TraitRule.IfAnyOfThese;
         public List<string> TraitList { get; set; } = new List<string>();
+    }
+    
+    [Serializable]
+    public class JobModifier
+    {
+        public BelongsTo Who { get; set; } = BelongsTo.Victim;
+        public JobRule Rule { get; set; } = JobRule.IfAnyOfThese;
+        public List<string> JobList { get; set; } = new List<string>();
     }
     
     [Serializable]
@@ -217,6 +231,10 @@ namespace MurderItemSpawner
         // Trait matching options
         public bool UseTraits { get; set; } = false;
         public List<TraitModifier> TraitModifiers { get; set; } = new List<TraitModifier>();
+        
+        // Job matching options
+        public bool UseJobModifiers { get; set; } = false;
+        public List<JobModifier> JobModifiers { get; set; } = new List<JobModifier>();
 
     }
 }

@@ -775,6 +775,85 @@ namespace MurderItemSpawner
                     
                     Plugin.LogDebug($"All trait modifiers matched for rule '{rule.Name}', proceeding with spawn");
                 }
+                
+                // Check job matching if enabled
+                if (rule.UseJobModifiers && rule.JobModifiers != null && rule.JobModifiers.Count > 0)
+                {
+                    Plugin.LogDebug($"Checking job matching for rule '{rule.Name}'...");
+                    
+                    bool allJobModifiersMatch = true;
+                    
+                    foreach (var jobModifier in rule.JobModifiers)
+                    {
+                        // Get the human to check job for
+                        Human humanToCheck = null;
+                        
+                        switch (jobModifier.Who)
+                        {
+                            case BelongsTo.Murderer:
+                                humanToCheck = MurderController.Instance?.currentMurderer;
+                                break;
+                            case BelongsTo.Victim:
+                                humanToCheck = MurderController.Instance?.currentVictim;
+                                break;
+                            case BelongsTo.Player:
+                                humanToCheck = Player.Instance;
+                                break;
+                            case BelongsTo.MurdererDoctor:
+                                if (MurderController.Instance?.currentMurderer != null)
+                                {
+                                    humanToCheck = MurderController.Instance.currentMurderer.GetDoctor();
+                                }
+                                break;
+                            case BelongsTo.VictimDoctor:
+                                if (MurderController.Instance?.currentVictim != null)
+                                {
+                                    humanToCheck = MurderController.Instance.currentVictim.GetDoctor();
+                                }
+                                break;
+                            case BelongsTo.MurdererLandlord:
+                                if (MurderController.Instance?.currentMurderer != null)
+                                {
+                                    humanToCheck = MurderController.Instance.currentMurderer.GetLandlord();
+                                }
+                                break;
+                            case BelongsTo.VictimLandlord:
+                                if (MurderController.Instance?.currentVictim != null)
+                                {
+                                    humanToCheck = MurderController.Instance.currentVictim.GetLandlord();
+                                }
+                                break;
+                            default:
+                                Plugin.LogDebug($"Unknown job modifier Who value: {jobModifier.Who}");
+                                break;
+                        }
+                        
+                        if (humanToCheck == null)
+                        {
+                            Plugin.LogDebug($"Cannot check job: Human not found for {jobModifier.Who}");
+                            allJobModifiersMatch = false;
+                            break;
+                        }
+                        
+                        // Check if the human's job matches the specified rule
+                        bool jobMatches = CheckJobMatch(humanToCheck, jobModifier);
+                        
+                        if (!jobMatches)
+                        {
+                            Plugin.LogDebug($"Job matching failed for {jobModifier.Who}");
+                            allJobModifiersMatch = false;
+                            break;
+                        }
+                    }
+                    
+                    if (!allJobModifiersMatch)
+                    {
+                        Plugin.LogDebug($"Skipping spawn for rule '{rule.Name}': Job matching failed");
+                        return false;
+                    }
+                    
+                    Plugin.LogDebug($"All job modifiers matched for rule '{rule.Name}', proceeding with spawn");
+                }
 
                 // Get the spawn location using the recipient as reference
                 Interactable spawnLocation = GetSpawnLocation(rule, itemOwner, spawnLocationRecipient);
@@ -1174,7 +1253,7 @@ namespace MurderItemSpawner
                 Plugin.LogDebug($"Cannot check traits: Human is null or has no traits");
                 return false;
             }
-            
+
             // Debug: Output all traits for this human
             Plugin.LogDebug($"Checking traits for {human.name}:");
             foreach (var trait in human.characterTraits)
@@ -1184,7 +1263,7 @@ namespace MurderItemSpawner
                     Plugin.LogDebug($"- {trait.name}");
                 }
             }
-            
+                     
             // Get the list of trait names for this human
             List<string> humanTraits = new List<string>();
             foreach (var trait in human.characterTraits)
@@ -1246,6 +1325,62 @@ namespace MurderItemSpawner
             
             // Default case (should never happen)
             Plugin.LogDebug($"Unknown trait rule: {traitModifier.Rule}");
+            return false;
+        }
+        
+        // Check if a human's job matches the specified job rule
+        private bool CheckJobMatch(Human human, JobModifier jobModifier)
+        {
+            // If the human is null or has no job, return false
+            if (human == null || human.job == null)
+            {
+                Plugin.LogDebug($"Cannot check job: Human is null or has no job");
+                return false;
+            }
+            
+            // Get the job name and preset name
+            string jobName = human.job.name;
+            string jobPresetName = human.job.preset != null ? human.job.preset.name : "";
+            
+            Plugin.LogDebug($"Checking job for {human.name}:");
+            Plugin.LogDebug($"- Job name: {jobName}");
+            Plugin.LogDebug($"- Job preset name: {jobPresetName}");
+            
+            // Check if any of the jobs match
+            if (jobModifier.Rule == JobRule.IfAnyOfThese)
+            {
+                foreach (string job in jobModifier.JobList)
+                {
+                    if (jobName == job || jobPresetName == job)
+                    {
+                        Plugin.LogDebug($"Found matching job: {job}");
+                        return true;
+                    }
+                }
+                
+                // No matches found
+                Plugin.LogDebug($"No matching jobs found for IfAnyOfThese rule");
+                return false;
+            }
+            // Check if none of the jobs match
+            else if (jobModifier.Rule == JobRule.IfNoneOfThese)
+            {
+                foreach (string job in jobModifier.JobList)
+                {
+                    if (jobName == job || jobPresetName == job)
+                    {
+                        Plugin.LogDebug($"Found excluded job: {job}");
+                        return false;
+                    }
+                }
+                
+                // No excluded jobs found
+                Plugin.LogDebug($"No excluded jobs found for IfNoneOfThese rule");
+                return true;
+            }
+            
+            // Default case (should never happen)
+            Plugin.LogDebug($"Unknown job rule: {jobModifier.Rule}");
             return false;
         }
     }
