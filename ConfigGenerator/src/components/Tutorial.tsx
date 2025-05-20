@@ -532,7 +532,7 @@ const Tutorial: React.FC = () => {
         </Typography>
         <Typography variant="body1" component="ol" sx={{ pl: 2 }}>
           <li>Save the generated JSON configuration</li>
-          <li>Place the JSON file in the mod's plugin folder</li>
+          <li>Place the JSON file in the mod's plugin folder (the JSON file name MUST end in "MIS")</li>
           <li>Reload a save game (you do not need to restart the game as long as the mod is already installed) </li>
         </Typography>
         

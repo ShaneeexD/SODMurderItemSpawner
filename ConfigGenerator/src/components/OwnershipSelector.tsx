@@ -14,16 +14,16 @@ import { BelongsTo } from '../models/configTypes';
 
 interface OwnershipSelectorProps {
   belongsTo: BelongsTo;
-  setBelongsTo: (owner: BelongsTo) => void;
+  onBelongsToChange: (owner: BelongsTo) => void;
   spawnLocationRecipient: BelongsTo;
-  setSpawnLocationRecipient: (recipient: BelongsTo) => void;
+  onSpawnLocationRecipientChange: (recipient: BelongsTo) => void;
 }
 
 const OwnershipSelector: React.FC<OwnershipSelectorProps> = ({
   belongsTo,
-  setBelongsTo,
+  onBelongsToChange,
   spawnLocationRecipient,
-  setSpawnLocationRecipient
+  onSpawnLocationRecipientChange
 }) => {
   // Convert enum to array for rendering
   const ownershipTypes = Object.keys(BelongsTo)
@@ -49,7 +49,7 @@ const OwnershipSelector: React.FC<OwnershipSelectorProps> = ({
                 id="belongs-to"
                 value={belongsTo}
                 label="Item Owner"
-                onChange={(e) => setBelongsTo(Number(e.target.value) as BelongsTo)}
+                onChange={(e) => onBelongsToChange(Number(e.target.value) as BelongsTo)}
               >
                 {ownershipTypes.map((type) => (
                   <MenuItem key={type.value} value={type.value}>
@@ -71,7 +71,7 @@ const OwnershipSelector: React.FC<OwnershipSelectorProps> = ({
                 id="spawn-location-recipient"
                 value={spawnLocationRecipient}
                 label="Location Recipient"
-                onChange={(e) => setSpawnLocationRecipient(Number(e.target.value) as BelongsTo)}
+                onChange={(e) => onSpawnLocationRecipientChange(Number(e.target.value) as BelongsTo)}
               >
                 {ownershipTypes.map((type) => (
                   <MenuItem key={type.value} value={type.value}>

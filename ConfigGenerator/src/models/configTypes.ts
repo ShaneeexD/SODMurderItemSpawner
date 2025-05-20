@@ -73,6 +73,13 @@ export interface SpawnRule {
   Recipient: BelongsTo;
   CustomPosition?: Vector3;
   UnlockMailbox?: boolean;
+  // New spawn options
+  OnlySpawnOnce?: boolean;
+  RequiresPriorItem?: boolean;
+  RequiredPriorItem?: string;
+  RequiresSeparateTrigger?: boolean;
+  RequiresMultipleTriggers?: boolean;
+  RequiredTriggerCount?: number;
 }
 
 export interface ConfigFile {

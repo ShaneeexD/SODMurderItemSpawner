@@ -18,6 +18,8 @@ import EventSelector from './EventSelector';
 import ItemSelector from './ItemSelector';
 import LocationSelector from './LocationSelector';
 import OwnershipSelector from './OwnershipSelector';
+import SpawnOnceSelector from './SpawnOnceSelector';
+import SpawnRequirementsSelector from './SpawnRequirementsSelector';
 import OutputDisplay from './OutputDisplay';
 import { SpawnLocationType, BelongsTo, SubLocationTypeBuildingEntrances } from '../models/configTypes';
 import type { SpawnRule, ConfigFile } from '../models/configTypes';
@@ -70,6 +72,14 @@ const ConfigForm: React.FC = () => {
   
   // Mailbox unlock state
   const [unlockMailbox, setUnlockMailbox] = useState<boolean>(false);
+  
+  // New spawn options
+  const [onlySpawnOnce, setOnlySpawnOnce] = useState<boolean>(false);
+  const [requiresPriorItem, setRequiresPriorItem] = useState<boolean>(false);
+  const [requiredPriorItem, setRequiredPriorItem] = useState<string>('');
+  const [requiresSeparateTrigger, setRequiresSeparateTrigger] = useState<boolean>(true);
+  const [requiresMultipleTriggers, setRequiresMultipleTriggers] = useState<boolean>(false);
+  const [requiredTriggerCount, setRequiredTriggerCount] = useState<number>(2);
 
   // Build the rule object
   const buildRule = (): SpawnRule => {
@@ -87,6 +97,25 @@ const ConfigForm: React.FC = () => {
       BelongsTo: belongsTo,
       Recipient: spawnLocationRecipient,
     };
+    
+    // Add new spawn options
+    if (onlySpawnOnce) {
+      rule.OnlySpawnOnce = true;
+    }
+    
+    if (requiresPriorItem) {
+      rule.RequiresPriorItem = true;
+      rule.RequiredPriorItem = requiredPriorItem;
+      
+      if (requiresSeparateTrigger) {
+        rule.RequiresSeparateTrigger = true;
+      }
+    }
+    
+    if (requiresMultipleTriggers) {
+      rule.RequiresMultipleTriggers = true;
+      rule.RequiredTriggerCount = requiredTriggerCount;
+    }
     
     // Add location-specific fields based on the selected location type
     const locationType = Number(locationData.locationType);
@@ -223,6 +252,14 @@ const ConfigForm: React.FC = () => {
           } else {
             setUnlockMailbox(false);
           }
+          
+          // Load new spawn options
+          setOnlySpawnOnce(!!rule.OnlySpawnOnce);
+          setRequiresPriorItem(!!rule.RequiresPriorItem);
+          setRequiredPriorItem(rule.RequiredPriorItem || '');
+          setRequiresSeparateTrigger(!!rule.RequiresSeparateTrigger);
+          setRequiresMultipleTriggers(!!rule.RequiresMultipleTriggers);
+          setRequiredTriggerCount(rule.RequiredTriggerCount || 2);
           
           // Build location data
           const newLocationData: any = {
@@ -404,9 +441,29 @@ const ConfigForm: React.FC = () => {
           <AccordionDetails>
             <OwnershipSelector
               belongsTo={belongsTo}
-              setBelongsTo={setBelongsTo}
+              onBelongsToChange={setBelongsTo}
               spawnLocationRecipient={spawnLocationRecipient}
-              setSpawnLocationRecipient={setSpawnLocationRecipient}
+              onSpawnLocationRecipientChange={setSpawnLocationRecipient}
+            />
+            
+            <SpawnOnceSelector 
+              onlySpawnOnce={onlySpawnOnce}
+              onChange={setOnlySpawnOnce}
+            />
+            
+            <SpawnRequirementsSelector
+              requiresPriorItem={requiresPriorItem}
+              requiredPriorItem={requiredPriorItem}
+              requiresSeparateTrigger={requiresSeparateTrigger}
+              requiresMultipleTriggers={requiresMultipleTriggers}
+              requiredTriggerCount={requiredTriggerCount}
+              onChange={(values) => {
+                setRequiresPriorItem(values.requiresPriorItem);
+                setRequiredPriorItem(values.requiredPriorItem);
+                setRequiresSeparateTrigger(values.requiresSeparateTrigger);
+                setRequiresMultipleTriggers(values.requiresMultipleTriggers);
+                setRequiredTriggerCount(values.requiredTriggerCount);
+              }}
             />
           </AccordionDetails>
         </Accordion>

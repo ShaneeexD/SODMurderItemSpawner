@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="64" height="64">
+  <!-- Document background -->
+  <path fill="#f5f5f5" d="M4 2h12l4 4v16H4z"/>
+  <!-- Document outline -->
+  <path fill="none" stroke="#333" stroke-width="1" d="M4 2h12l4 4v16H4z"/>
+  <!-- Folded corner -->
+  <path fill="#d9d9d9" d="M16 2v4h4z"/>
+  <path fill="none" stroke="#333" stroke-width="1" d="M16 2v4h4"/>
+  <!-- Text lines -->
+  <path fill="#333" d="M7 8h10v1H7z"/>
+  <path fill="#333" d="M7 11h10v1H7z"/>
+  <path fill="#333" d="M7 14h10v1H7z"/>
+  <path fill="#333" d="M7 17h7v1H7z"/>
+</svg>
