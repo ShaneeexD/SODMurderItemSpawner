@@ -64,6 +64,8 @@ const ConfigForm: React.FC = () => {
   // Ownership settings
   const [belongsTo, setBelongsTo] = useState<BelongsTo>(BelongsTo.Murderer);
   const [spawnLocationRecipient, setSpawnLocationRecipient] = useState<BelongsTo>(BelongsTo.Victim);
+  const [useMultipleOwners, setUseMultipleOwners] = useState<boolean>(false);
+  const [owners, setOwners] = useState<BelongsTo[]>([]);
   
   // Message states
   const [showSuccessMessage, setShowSuccessMessage] = useState<boolean>(false);
@@ -97,6 +99,12 @@ const ConfigForm: React.FC = () => {
       BelongsTo: belongsTo,
       Recipient: spawnLocationRecipient,
     };
+    
+    // Add multiple owners if enabled
+    if (useMultipleOwners && owners.length > 0) {
+      rule.UseMultipleOwners = true;
+      rule.Owners = owners;
+    }
     
     // Add new spawn options
     if (onlySpawnOnce) {
@@ -252,6 +260,10 @@ const ConfigForm: React.FC = () => {
           } else {
             setUnlockMailbox(false);
           }
+          
+          // Load multiple owners settings
+          setUseMultipleOwners(!!rule.UseMultipleOwners);
+          setOwners(rule.Owners || []);
           
           // Load new spawn options
           setOnlySpawnOnce(!!rule.OnlySpawnOnce);
@@ -444,6 +456,10 @@ const ConfigForm: React.FC = () => {
               onBelongsToChange={setBelongsTo}
               spawnLocationRecipient={spawnLocationRecipient}
               onSpawnLocationRecipientChange={setSpawnLocationRecipient}
+              useMultipleOwners={useMultipleOwners}
+              onUseMultipleOwnersChange={setUseMultipleOwners}
+              owners={owners}
+              onOwnersChange={setOwners}
             />
             
             <SpawnOnceSelector 

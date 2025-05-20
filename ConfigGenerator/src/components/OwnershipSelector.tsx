@@ -8,7 +8,9 @@ import {
   Stack,
   Typography,
   Paper,
-  Box
+  Box,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import { BelongsTo } from '../models/configTypes';
 
@@ -17,13 +19,22 @@ interface OwnershipSelectorProps {
   onBelongsToChange: (owner: BelongsTo) => void;
   spawnLocationRecipient: BelongsTo;
   onSpawnLocationRecipientChange: (recipient: BelongsTo) => void;
+  // Multiple owners
+  useMultipleOwners: boolean;
+  onUseMultipleOwnersChange: (useMultiple: boolean) => void;
+  owners: BelongsTo[];
+  onOwnersChange: (owners: BelongsTo[]) => void;
 }
 
 const OwnershipSelector: React.FC<OwnershipSelectorProps> = ({
   belongsTo,
   onBelongsToChange,
   spawnLocationRecipient,
-  onSpawnLocationRecipientChange
+  onSpawnLocationRecipientChange,
+  useMultipleOwners,
+  onUseMultipleOwnersChange,
+  owners,
+  onOwnersChange
 }) => {
   // Convert enum to array for rendering
   const ownershipTypes = Object.keys(BelongsTo)
@@ -32,6 +43,17 @@ const OwnershipSelector: React.FC<OwnershipSelectorProps> = ({
       value: BelongsTo[key as keyof typeof BelongsTo],
       label: key
     }));
+
+  // Handle adding and removing owners
+  const handleToggleOwner = (ownerValue: BelongsTo) => {
+    if (owners.includes(ownerValue)) {
+      // Remove owner if already in the list
+      onOwnersChange(owners.filter(o => o !== ownerValue));
+    } else {
+      // Add owner if not in the list
+      onOwnersChange([...owners, ownerValue]);
+    }
+  };
 
   return (
     <Paper elevation={1} sx={{ p: 2 }}>
@@ -80,10 +102,51 @@ const OwnershipSelector: React.FC<OwnershipSelectorProps> = ({
                 ))}
               </Select>
               <FormHelperText>
-                Whose location to use for spawning (e.g., whose home/workplace)
+                Whose location to use for spawning
               </FormHelperText>
             </FormControl>
           </Box>
+        </Box>
+        
+        {/* Multiple Owners Section */}
+        <Box sx={{ mt: 2 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={useMultipleOwners}
+                onChange={(e) => onUseMultipleOwnersChange(e.target.checked)}
+                color="primary"
+              />
+            }
+            label="Use Multiple Owners"
+          />
+          
+          {useMultipleOwners && (
+            <Box sx={{ mt: 1, border: '1px solid #e0e0e0', borderRadius: 1, p: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Select Multiple Owners
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {ownershipTypes.map((type) => (
+                  <FormControlLabel
+                    key={type.value}
+                    control={
+                      <Switch
+                        size="small"
+                        checked={owners.includes(type.value)}
+                        onChange={() => handleToggleOwner(type.value)}
+                        color="primary"
+                      />
+                    }
+                    label={type.label}
+                  />
+                ))}
+              </Box>
+              <FormHelperText>
+                Select all owners that apply to this item
+              </FormHelperText>
+            </Box>
+          )}
         </Box>
       </Stack>
     </Paper>

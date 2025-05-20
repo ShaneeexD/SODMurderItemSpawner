@@ -73,6 +73,9 @@ export interface SpawnRule {
   Recipient: BelongsTo;
   CustomPosition?: Vector3;
   UnlockMailbox?: boolean;
+  // Multiple owners
+  UseMultipleOwners?: boolean;
+  Owners?: BelongsTo[];
   // New spawn options
   OnlySpawnOnce?: boolean;
   RequiresPriorItem?: boolean;
