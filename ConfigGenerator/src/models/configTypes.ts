@@ -54,7 +54,7 @@ export interface SpawnRule {
   Description?: string;
   TriggerEvents: string[];
   MurderMO?: string;
-  ItemToSpawn: string;
+  ItemsToSpawn: string[];
   SpawnChance: number;
   SpawnLocation: SpawnLocationType;
   RandomSpawnLocations?: string[];

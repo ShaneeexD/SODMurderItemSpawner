@@ -34,7 +34,7 @@ const ConfigForm: React.FC = () => {
   const [murderTypeFilter, setMurderTypeFilter] = useState<string>('TheDoveKiller');
   
   // Item settings
-  const [itemToSpawn, setItemToSpawn] = useState<string>('FirstKillLetterInteractable');
+  const [itemsToSpawn, setItemsToSpawn] = useState<string[]>(['Pencil']);
   const [spawnChance, setSpawnChance] = useState<number>(1.0);
   
   // Location settings
@@ -92,7 +92,7 @@ const ConfigForm: React.FC = () => {
       Description: description || undefined,
       TriggerEvents: triggerEvents,
       MurderMO: murderTypeFilter,
-      ItemToSpawn: itemToSpawn,
+      ItemsToSpawn: itemsToSpawn,
       SpawnChance: spawnChance,
       SpawnLocation: locationData.locationType,
       // Ownership fields
@@ -249,7 +249,14 @@ const ConfigForm: React.FC = () => {
           setDescription(rule.Description || '');
           setTriggerEvents(rule.TriggerEvents || ['PickNewVictim']);
           setMurderTypeFilter(rule.MurderMO || 'TheDoveKiller');
-          setItemToSpawn(rule.ItemToSpawn || 'FirstKillLetterInteractable');
+          // Handle both old and new format
+          if (rule.ItemsToSpawn) {
+            setItemsToSpawn(rule.ItemsToSpawn);
+          } else if (rule.ItemToSpawn) {
+            setItemsToSpawn([rule.ItemToSpawn]);
+          } else {
+            setItemsToSpawn(['FirstKillLetterInteractable']);
+          }
           setSpawnChance(rule.SpawnChance || 1.0);
           setBelongsTo(rule.BelongsTo || BelongsTo.Murderer);
           setSpawnLocationRecipient(rule.Recipient || BelongsTo.Victim);
@@ -336,7 +343,7 @@ const ConfigForm: React.FC = () => {
     setDescription('');
     setTriggerEvents(['PickNewVictim']);
     setMurderTypeFilter('TheDoveKiller');
-    setItemToSpawn('FirstKillLetterInteractable');
+    setItemsToSpawn(['Pencil']);
     setSpawnChance(1.0);
     setLocationData({
       locationType: SpawnLocationType.Home,
@@ -347,7 +354,7 @@ const ConfigForm: React.FC = () => {
       positionY: 0,
       positionZ: 0,
       useFurniture: true,
-      furniturePresets: ['Table', 'Desk'],
+      furniturePresets: ['KitchenCounter'],
       randomSpawnLocations: [],
       hotelRooftopBarSubLocations: [],
       customRoomNames: [],
@@ -422,8 +429,8 @@ const ConfigForm: React.FC = () => {
           </AccordionSummary>
           <AccordionDetails>
             <ItemSelector
-              itemToSpawn={itemToSpawn}
-              setItemToSpawn={setItemToSpawn}
+              itemsToSpawn={itemsToSpawn}
+              setItemsToSpawn={setItemsToSpawn}
               spawnChance={spawnChance}
               setSpawnChance={setSpawnChance}
             />
@@ -513,7 +520,7 @@ const ConfigForm: React.FC = () => {
             variant="contained" 
             color="primary" 
             onClick={handleSaveToLocalStorage}
-            disabled={!name || !itemToSpawn}
+            disabled={!name || itemsToSpawn.length === 0}
           >
             Save Configuration
           </Button>
