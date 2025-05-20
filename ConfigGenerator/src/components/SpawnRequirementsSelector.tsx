@@ -117,7 +117,7 @@ const SpawnRequirementsSelector: React.FC<SpawnRequirementsSelectorProps> = ({
               }
               label="Requires multiple trigger events"
             />
-            <Tooltip title="When enabled, this item will only spawn after the event has been triggered multiple times.">
+            <Tooltip title="When enabled, this item will only spawn after the event has been triggered multiple times. (Same trigger event only)">
               <InfoIcon color="action" fontSize="small" sx={{ ml: 1 }} />
             </Tooltip>
           </Box>

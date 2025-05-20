@@ -20,9 +20,11 @@ import LocationSelector from './LocationSelector';
 import OwnershipSelector from './OwnershipSelector';
 import SpawnOnceSelector from './SpawnOnceSelector';
 import SpawnRequirementsSelector from './SpawnRequirementsSelector';
+import TraitModifierSelector from './TraitModifierSelector';
+import JobModifierSelector from './JobModifierSelector';
 import OutputDisplay from './OutputDisplay';
 import { SpawnLocationType, BelongsTo, SubLocationTypeBuildingEntrances } from '../models/configTypes';
-import type { SpawnRule, ConfigFile } from '../models/configTypes';
+import type { SpawnRule, ConfigFile, TraitModifier, JobModifier } from '../models/configTypes';
 
 const ConfigForm: React.FC = () => {
   // Form state
@@ -83,6 +85,12 @@ const ConfigForm: React.FC = () => {
   const [requiresMultipleTriggers, setRequiresMultipleTriggers] = useState<boolean>(false);
   const [requiredTriggerCount, setRequiredTriggerCount] = useState<number>(2);
 
+  // Trait and job modifiers
+  const [useTraits, setUseTraits] = useState<boolean>(false);
+  const [traitModifiers, setTraitModifiers] = useState<TraitModifier[]>([]);
+  const [useJobModifiers, setUseJobModifiers] = useState<boolean>(false);
+  const [jobModifiers, setJobModifiers] = useState<JobModifier[]>([]);
+
   // Build the rule object
   const buildRule = (): SpawnRule => {
     // Start with the common fields that apply to all location types
@@ -106,23 +114,35 @@ const ConfigForm: React.FC = () => {
       rule.Owners = owners;
     }
     
-    // Add new spawn options
+    // Add new spawn options if they are set
     if (onlySpawnOnce) {
-      rule.OnlySpawnOnce = true;
+      rule.OnlySpawnOnce = onlySpawnOnce;
     }
     
     if (requiresPriorItem) {
-      rule.RequiresPriorItem = true;
+      rule.RequiresPriorItem = requiresPriorItem;
       rule.RequiredPriorItem = requiredPriorItem;
-      
-      if (requiresSeparateTrigger) {
-        rule.RequiresSeparateTrigger = true;
-      }
+    }
+    
+    if (requiresSeparateTrigger) {
+      rule.RequiresSeparateTrigger = requiresSeparateTrigger;
     }
     
     if (requiresMultipleTriggers) {
-      rule.RequiresMultipleTriggers = true;
+      rule.RequiresMultipleTriggers = requiresMultipleTriggers;
       rule.RequiredTriggerCount = requiredTriggerCount;
+    }
+    
+    // Add trait modifiers if enabled
+    if (useTraits) {
+      rule.UseTraits = useTraits;
+      rule.TraitModifiers = traitModifiers;
+    }
+    
+    // Add job modifiers if enabled
+    if (useJobModifiers) {
+      rule.UseJobModifiers = useJobModifiers;
+      rule.JobModifiers = jobModifiers;
     }
     
     // Add location-specific fields based on the selected location type
@@ -280,6 +300,14 @@ const ConfigForm: React.FC = () => {
           setRequiresMultipleTriggers(!!rule.RequiresMultipleTriggers);
           setRequiredTriggerCount(rule.RequiredTriggerCount || 2);
           
+          // Load trait modifiers
+          setUseTraits(!!rule.UseTraits);
+          setTraitModifiers(rule.TraitModifiers || []);
+          
+          // Load job modifiers
+          setUseJobModifiers(!!rule.UseJobModifiers);
+          setJobModifiers(rule.JobModifiers || []);
+          
           // Build location data
           const newLocationData: any = {
             locationType: rule.SpawnLocation || SpawnLocationType.Home,
@@ -368,6 +396,24 @@ const ConfigForm: React.FC = () => {
     setBelongsTo(BelongsTo.Murderer);
     setSpawnLocationRecipient(BelongsTo.Victim);
     setUnlockMailbox(false);
+    
+    // Reset ownership settings
+    setUseMultipleOwners(false);
+    setOwners([]);
+    
+    // Reset spawn options
+    setOnlySpawnOnce(false);
+    setRequiresPriorItem(false);
+    setRequiredPriorItem('');
+    setRequiresSeparateTrigger(false);
+    setRequiresMultipleTriggers(false);
+    setRequiredTriggerCount(2);
+    
+    // Reset trait and job modifiers
+    setUseTraits(false);
+    setTraitModifiers([]);
+    setUseJobModifiers(false);
+    setJobModifiers([]);
   };
   
   return (
@@ -487,6 +533,28 @@ const ConfigForm: React.FC = () => {
                 setRequiresMultipleTriggers(values.requiresMultipleTriggers);
                 setRequiredTriggerCount(values.requiredTriggerCount);
               }}
+            />
+            
+            <Divider sx={{ my: 2 }} />
+            
+            <Typography variant="h6" gutterBottom>
+              Character Traits & Jobs
+            </Typography>
+            
+            <TraitModifierSelector
+              useTraits={useTraits}
+              onUseTraitsChange={setUseTraits}
+              traitModifiers={traitModifiers}
+              onTraitModifiersChange={setTraitModifiers}
+            />
+            
+            <Box sx={{ mt: 3 }} />
+            
+            <JobModifierSelector
+              useJobModifiers={useJobModifiers}
+              onUseJobModifiersChange={setUseJobModifiers}
+              jobModifiers={jobModifiers}
+              onJobModifiersChange={setJobModifiers}
             />
           </AccordionDetails>
         </Accordion>

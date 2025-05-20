@@ -65,7 +65,7 @@ const ItemSelector: React.FC<ItemSelectorProps> = ({
           ))}
         </Select>
         <FormHelperText>
-          Select items that will be spawned
+          Select items that will be spawned (One picked at random)
         </FormHelperText>
       </FormControl>
       
@@ -138,11 +138,11 @@ const ItemSelector: React.FC<ItemSelectorProps> = ({
       <TextField
         fullWidth
         label="Custom Item Name"
-        helperText="Optional: Enter a custom item name if not in the list above"
+        helperText="Optional: Enter a custom item preset name if not in the list above"
         variant="outlined"
         onChange={(e) => {
           if (e.target.value) {
-            setItemToSpawn(e.target.value);
+            setItemsToSpawn([...itemsToSpawn, e.target.value]);
           }
         }}
       />

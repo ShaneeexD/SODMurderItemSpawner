@@ -42,10 +42,41 @@ export const SubLocationTypeBuildingEntrances = {
 // Type for SubLocationTypeBuildingEntrances
 export type SubLocationTypeBuildingEntrances = (typeof SubLocationTypeBuildingEntrances)[keyof typeof SubLocationTypeBuildingEntrances];
 
+// TraitRule values
+export const TraitRule = {
+  IfAnyOfThese: 0,
+  IfAllOfThese: 1,
+  IfNoneOfThese: 2
+} as const;
+
+// Type for TraitRule
+export type TraitRule = (typeof TraitRule)[keyof typeof TraitRule];
+
+// JobRule values
+export const JobRule = {
+  IfAnyOfThese: 0,
+  IfNoneOfThese: 1
+} as const;
+
+// Type for JobRule
+export type JobRule = (typeof JobRule)[keyof typeof JobRule];
+
 export interface Vector3 {
   X: number;
   Y: number;
   Z: number;
+}
+
+export interface TraitModifier {
+  Who: BelongsTo;
+  Rule: TraitRule;
+  TraitList: string[];
+}
+
+export interface JobModifier {
+  Who: BelongsTo;
+  Rule: JobRule;
+  JobList: string[];
 }
 
 export interface SpawnRule {
@@ -83,6 +114,11 @@ export interface SpawnRule {
   RequiresSeparateTrigger?: boolean;
   RequiresMultipleTriggers?: boolean;
   RequiredTriggerCount?: number;
+  // Trait and job modifiers
+  UseTraits?: boolean;
+  TraitModifiers?: TraitModifier[];
+  UseJobModifiers?: boolean;
+  JobModifiers?: JobModifier[];
 }
 
 export interface ConfigFile {
